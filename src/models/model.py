@@ -2,35 +2,23 @@ import torch
 import torch.nn as nn
 from models.basicModel import RnnEncoder, CnnEncoder, Decoder
 
+
 class MyModel(nn.Module):
     def __init__(
-        self, 
+        self,
         input_size: int = 1,
         hidden_size: int = 32,
         num_layers: int = 3,
         dropout_p: float = 0.2,
-        seq_len: int = 16
+        seq_len: int = 16,
     ):
         super().__init__()
 
-        self.rnn_encoder = RnnEncoder(
-            input_size,
-            hidden_size,
-            num_layers,
-            dropout_p
-        )
+        self.rnn_encoder = RnnEncoder(input_size, hidden_size, num_layers, dropout_p)
 
-        self.cnn_encoder = CnnEncoder(
-            input_size
-        )
+        self.cnn_encoder = CnnEncoder(input_size)
 
-        self.decoder = Decoder(
-            input_size,
-            seq_len,
-            hidden_size,
-            num_layers,
-            dropout_p
-        )
+        self.decoder = Decoder(input_size, seq_len, hidden_size, num_layers, dropout_p)
 
         self.seq_len = seq_len
 

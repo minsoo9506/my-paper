@@ -2,6 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 
+
 class Trainer:
     def __init__(self, model, optimizer, crit):
         super().__init__()
@@ -13,7 +14,7 @@ class Trainer:
         self.model.train()
         total_loss = 0
         for rnn_enc_x, cnn_enc_x, dec_x, target in train_loader:
-            if device != 'cpu':
+            if device != "cpu":
                 rnn_enc_x = rnn_enc_x.to(device)
                 cnn_enc_x = cnn_enc_x.to(device)
                 dec_x = dec_x.to(device)
@@ -26,13 +27,13 @@ class Trainer:
             # prevent memory leak
             total_loss += float(loss)
         return total_loss / len(train_loader)
-    
+
     def _validate(self, val_loader, device):
         self.model.eval()
         with torch.no_grad():
             total_loss = 0
             for rnn_enc_x, cnn_enc_x, dec_x, target in val_loader:
-                if device != 'cpu':
+                if device != "cpu":
                     rnn_enc_x = rnn_enc_x.to(device)
                     cnn_enc_x = cnn_enc_x.to(device)
                     dec_x = dec_x.to(device)
@@ -48,10 +49,11 @@ class Trainer:
         early_stop_round = 0
 
         import wandb
+
         wandb.login()
         wandb.init(project=config.project, config=config)
         wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
-        
+
         for epoch_index in range(config.n_epochs):
             train_loss = self._train(train_loader, config.device)
             valid_loss = self._validate(val_loader, config.device)
@@ -66,12 +68,17 @@ class Trainer:
                 early_stop_round += 1
             if early_stop_round == config.early_stop_round:
                 print(f"Early Stopped!")
-                print(f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+                print(
+                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                )
                 break
-            if (epoch_index+1) % 10 == 0:
-                print(f'Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}')
+            if (epoch_index + 1) % 10 == 0:
+                print(
+                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                )
         self.model.load_state_dict(best_model)
         return self.model
+
 
 class Seq2SeqTrainer:
     def __init__(self, model, optimizer, crit):
@@ -84,7 +91,7 @@ class Seq2SeqTrainer:
         self.model.train()
         total_loss = 0
         for rnn_enc_x, dec_x, target in train_loader:
-            if device != 'cpu':
+            if device != "cpu":
                 rnn_enc_x = rnn_enc_x.to(device)
                 dec_x = dec_x.to(device)
                 target = target.to(device)
@@ -96,13 +103,13 @@ class Seq2SeqTrainer:
             # prevent memory leak
             total_loss += float(loss)
         return total_loss / len(train_loader)
-    
+
     def _validate(self, val_loader, device):
         self.model.eval()
         with torch.no_grad():
             total_loss = 0
             for rnn_enc_x, dec_x, target in val_loader:
-                if device != 'cpu':
+                if device != "cpu":
                     rnn_enc_x = rnn_enc_x.to(device)
                     dec_x = dec_x.to(device)
                     target = target.to(device)
@@ -117,10 +124,11 @@ class Seq2SeqTrainer:
         early_stop_round = 0
 
         import wandb
+
         wandb.login()
         wandb.init(project=config.project, config=config)
         # wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
-        
+
         for epoch_index in range(config.n_epochs):
             train_loss = self._train(train_loader, config.device)
             valid_loss = self._validate(val_loader, config.device)
@@ -135,9 +143,13 @@ class Seq2SeqTrainer:
                 early_stop_round += 1
             if early_stop_round == config.early_stop_round:
                 print(f"Early Stopped!")
-                print(f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+                print(
+                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                )
                 break
-            if (epoch_index+1) % 10 == 0:
-                print(f'Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}')
+            if (epoch_index + 1) % 10 == 0:
+                print(
+                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                )
         self.model.load_state_dict(best_model)
         return self.model

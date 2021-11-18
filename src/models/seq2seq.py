@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 
+
 class Encoder(nn.Module):
-    '''
+    """
     RNN based Encoder
 
     Args:
@@ -12,19 +13,23 @@ class Encoder(nn.Module):
         dropout_p (float)
 
     Attributes:
-    '''
-    def __init__(self, input_size: int = 1,
-                       hidden_size: int = 16,
-                       num_layers: int = 3,
-                       dropout_p: float = 0.2):
+    """
+
+    def __init__(
+        self,
+        input_size: int = 1,
+        hidden_size: int = 16,
+        num_layers: int = 3,
+        dropout_p: float = 0.2,
+    ):
         super().__init__()
 
         self.rnn = nn.LSTM(
-            input_size = input_size, 
-            hidden_size = hidden_size, 
-            num_layers = num_layers, 
-            dropout  = dropout_p,
-            batch_first = True
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout=dropout_p,
+            batch_first=True,
         )
 
     def forward(self, x):
@@ -32,9 +37,10 @@ class Encoder(nn.Module):
         _, h = self.rnn(x)
         # |h[0]| = (num_layers, batch_size, hidden_size)
         return h
-        
+
+
 class Decoder(nn.Module):
-    '''
+    """
     RNN based Decoder
 
     Args:
@@ -44,11 +50,15 @@ class Decoder(nn.Module):
         dropout_p (float)
 
     Attributes:
-    '''
-    def __init__(self, input_size: int = 1,
-                       hidden_size: int = 16,
-                       num_layers: int = 3,
-                       dropout_p: float = 0.2):
+    """
+
+    def __init__(
+        self,
+        input_size: int = 1,
+        hidden_size: int = 16,
+        num_layers: int = 3,
+        dropout_p: float = 0.2,
+    ):
         super().__init__()
 
         self.input_size = input_size
@@ -75,7 +85,7 @@ class Decoder(nn.Module):
 
         if y_t_1 is None:
             y_t_1 = x.new(batch_size, 1, hidden_size).zero_()
-        
+
         x = torch.cat([x, y_t_1], dim=-1)
 
         y_t, h_t = self.rnn(x, h_t_1)
@@ -86,30 +96,21 @@ class Decoder(nn.Module):
 
         return pred, y_t, h_t
 
+
 class Seq2Seq(nn.Module):
     def __init__(
-        self, 
+        self,
         input_size: int = 1,
         hidden_size: int = 16,
         num_layers: int = 3,
         dropout_p: float = 0.2,
-        seq_len: int = 16
+        seq_len: int = 16,
     ):
         super().__init__()
 
-        self.rnn_encoder = Encoder(
-            input_size,
-            hidden_size,
-            num_layers,
-            dropout_p
-        )
+        self.rnn_encoder = Encoder(input_size, hidden_size, num_layers, dropout_p)
 
-        self.decoder = Decoder(
-            input_size,
-            hidden_size,
-            num_layers,
-            dropout_p
-        )
+        self.decoder = Decoder(input_size, hidden_size, num_layers, dropout_p)
 
         self.seq_len = seq_len
 

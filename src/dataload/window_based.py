@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+
 class WindowBasedDataset(Dataset):
     """make dataset with window based approach
 
@@ -10,13 +11,14 @@ class WindowBasedDataset(Dataset):
     Dataset : [type]
         [description]
     """
+
     def __init__(
         self,
         data: np.ndarray,
         window: int,
         seq_len: int,
         feature_dim: int = 1,
-        ) -> None:
+    ) -> None:
         """[summary]
 
         Parameters
