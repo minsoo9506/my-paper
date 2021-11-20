@@ -28,15 +28,32 @@ def normalize_data(data_name: str):
     return normalize_data
 
 
-# 데이터이름에 따라서 train, test로 나누기
-def split_train_test(data):
-    pass
+def split_train_valid_test(data_name: str, train_ratio: float = 0.8):
+    """train, valid, test data로 나누기
 
+    Parameters
+    ----------
+    data_name : str
+    train_ratio : float, optional
+        validation data ratio, by default 0.8
 
-# data를 torch, numpy로 바꾸기
-def transform_to_torch():
-    pass
+    Returns
+    -------
+    train: pd.DataFrame
+    valid: pd.DataFrame
+    test: pd.DataFrame
+    """
+    normalized_data = normalize_data(data_name)
 
+    data_path = PATH + data_name
+    data_path_split = data_path.split("_")
+    train_end_idx = int(data_path_split[4] * train_ratio)
+    val_end_idx = data_path_split[4]
 
-def tranasform_to_np():
-    pass
+    train, valid, test = (
+        normalized_data[:train_end_idx],
+        normalize_data[train_end_idx:val_end_idx],
+        normalize_data[val_end_idx:],
+    )
+
+    return train, valid, test
