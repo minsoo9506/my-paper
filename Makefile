@@ -6,4 +6,6 @@ init:
 
 format:
 	black src/
-	isort src/ --profile black
+
+lint:
+	pytest src/ --flake8
