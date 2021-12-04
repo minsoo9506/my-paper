@@ -3,7 +3,7 @@ import numpy as np
 
 PATH = "../UCR_Anomaly_FullData/"
 
-# train에 기반하여 mean, std로 normalize
+
 def normalize_data(data_name: str):
     """train에 기반하여 mean, std로 normalize
 
