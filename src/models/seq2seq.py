@@ -3,18 +3,6 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    """
-    RNN based Encoder
-
-    Args:
-        input_size (int): The arg is used for choosing univariate or multivariate time
-        hidden_size (int)
-        num_layers (int)
-        dropout_p (float)
-
-    Attributes:
-    """
-
     def __init__(
         self,
         input_size: int = 1,
@@ -40,18 +28,6 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    """
-    RNN based Decoder
-
-    Args:
-        input_size (int): The arg is used for choosing univariate or multivariate time
-        hidden_size (int)
-        num_layers (int)
-        dropout_p (float)
-
-    Attributes:
-    """
-
     def __init__(
         self,
         input_size: int = 1,
