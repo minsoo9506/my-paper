@@ -48,14 +48,14 @@ class LSTMEncoder(nn.Module):
         """
         # |x| = (batch_size, seq_len, feature_dim)
         _, h = self.lstm(x)
-        # |h[0]| = (num_layers, batch_size, hidden_size)
+        # |h[0]| = (num_layers, batch_size, hidden_size) : hidden state
+        # |h[1]| = (num_layers, batch_size, hidden_size) : cell state
         return h
 
 class LSTMDecoder(nn.Module):
     def __init__(
         self,
-        original_feature_dim: int,
-        seq_len: int,
+        input_size: int = 1,
         hidden_size: int = 32,
         num_layers: int = 3,
         dropout_p: float = 0.2,
@@ -64,10 +64,8 @@ class LSTMDecoder(nn.Module):
 
         Parameters
         ----------
-        original_feature_dim : int
-            [description]
-        seq_len : int
-            [description]
+        input_size : int
+            [description], by default 1
         hidden_size : int, optional
             [description], by default 32
         num_layers : int, optional
@@ -77,10 +75,8 @@ class LSTMDecoder(nn.Module):
         """
         super().__init__()
 
-        self.original_feature_dim = original_feature_dim
-
         self.lstm = nn.LSTM(
-            input_size=original_feature_dim + seq_len + hidden_size,
+            input_size=input_size + hidden_size, # 이전 input data와 hidden state
             hidden_size=hidden_size,
             num_layers=num_layers,
             dropout=dropout_p,
@@ -88,7 +84,7 @@ class LSTMDecoder(nn.Module):
         )
 
         self.last_fully = nn.Linear(
-            in_features=hidden_size, out_features=original_feature_dim
+            in_features=hidden_size, out_features=input_size
         )
 
     def forward(
@@ -102,21 +98,21 @@ class LSTMDecoder(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            [description]
+            직전 time-step에서의 input data
+            |x| = (batch_size, 1,  input_size)
         y_t_1 : torch.Tensor
             이전 time-step에서의 output
+            |y_t_1| = (batch_size, 1, hidden_size)
         h_t_1 : torch.Tensor
-            (h,c) : 이전 time-step의 (hidden, cell state)
+            이전 time-step에서의 (hidden state, cell state)
+            |h_t_1[0]| = (num_layers, batch_size, hidden_size)
+            |h_t_1[1]| = (num_layers, batch_size, hidden_size)
 
         Returns
         -------
         pred, y_t, h_t
             [description]
         """
-
-        # |x| = (batch_size, 1, original_input_dim + seq_len from CnnEncoder)
-        # |y_t_1| = (batch_size, 1, hidden_size)
-        # |h_t_1[0]| = (num_layers, batch_size, hidden_size)
 
         batch_size = x.size(0)
         hidden_size = h_t_1[0].size(-1)
@@ -127,13 +123,92 @@ class LSTMDecoder(nn.Module):
         x = torch.cat([x, y_t_1], dim=-1)
 
         y_t, h_t = self.lstm(x, h_t_1)
-        pred = self.last_fully(y_t.squeeze(1))
-        
-        # |pred| = (batch_size, original_feature_dim)
         # |y_t| = (batch_size, 1, hidden_size)
-        # |h_t[0]| = (num_layers, batch_size, hidden_size)
-
+        # |h_t[0]| = (num_layers, batch_size, hidden_size) : hidden state
+        # |h_t[1]| = (num_layers, batch_size, hidden_size) : cell state
+        pred = self.last_fully(y_t.squeeze(1))
+        # |pred| = (batch_size, input_size)
+        
         return pred, y_t, h_t
+    
+class Seq2Seq(nn.Module):
+    def __init__(
+        self,
+        input_size: int = 1,
+        hidden_size: int = 16,
+        num_layers: int = 3,
+        dropout_p: float = 0.2,
+        seq_len: int = 16,
+    ):
+        """[summary]
+
+        Parameters
+        ----------
+        input_size : int, optional
+            [description], by default 1
+        hidden_size : int, optional
+            [description], by default 16
+        num_layers : int, optional
+            [description], by default 3
+        dropout_p : float, optional
+            [description], by default 0.2
+        seq_len : int, optional
+            [description], by default 16
+        """
+        super().__init__()
+
+        self.encoder = LSTMEncoder(
+            input_size,
+            hidden_size,
+            num_layers,
+            dropout_p
+        )
+        self.decoder = LSTMDecoder(
+            input_size,
+            hidden_size,
+            num_layers,
+            dropout_p
+        )
+        self.seq_len = seq_len
+
+    def forward(
+        self,
+        enc_x: torch.Tensor,
+        dec_x: torch.Tensor
+        ):
+        """[summary]
+
+        Parameters
+        ----------
+        enc_x : torch.Tensor
+            input data of encoder
+            |enc_x| = (batch_size, seq_len, input_size)
+        dec_x : torch.Tensor
+            input data of decoder
+            |enc_x| = (batch_size, seq_len, input_size)
+
+        Returns
+        -------
+        preds : torch.Tensor
+            prediction result
+            |preds| = (batch_size, seq_len, input_size)
+        """
+        enc_h = self.encoder(enc_x)
+        _shape = enc_x.shape
+        # |_shape| = (batch_size, seq_len, input_size)
+        preds = enc_x.new(_shape[0], _shape[1], _shape[2]).zero_()
+        # teacher-forcing
+        x = dec_x[:, 0, :].unsqueeze(dim=1)
+        y_t_1 = None
+        h_t_1 = enc_h
+        pred, y_t, h_t = self.decoder(x, y_t_1, h_t_1)
+        preds[:, 0, :] = pred
+        for i in range(1, self.seq_len):
+            x = dec_x[:, i, :].unsqueeze(dim=1)
+            pred, y_t, h_t = self.decoder(x, y_t, h_t)
+            preds[:, i, :] = pred
+        # |preds| = (batch_size, seq_len, input_size)
+        return preds
     
 # class CNNEncoder(nn.Module):
 #     def __init__(self, in_channels: int = 1):
