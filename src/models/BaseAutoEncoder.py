@@ -103,7 +103,7 @@ class BaseDecoder(nn.Module):
         # |x| = (batch_size, output_size)
         return x
     
-class Seq2Seq(nn.Module):
+class BaseSeq2Seq(nn.Module):
     def __init__(
         self,
         input_size: int = 16,
