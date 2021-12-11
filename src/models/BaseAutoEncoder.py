@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 
+
 class BaseEncoder(nn.Module):
     def __init__(
         self,
@@ -29,13 +30,10 @@ class BaseEncoder(nn.Module):
             nn.Linear(16, 8),
             nn.LeakyReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(8, hidden_size)
+            nn.Linear(8, hidden_size),
         )
 
-    def forward(
-        self,
-        x: torch.Tensor
-    ):
+    def forward(self, x: torch.Tensor):
         """[summary]
 
         Parameters
@@ -51,6 +49,7 @@ class BaseEncoder(nn.Module):
         z = self.model(x)
         # |z| = (batch_size, hidden_size)
         return z
+
 
 class BaseDecoder(nn.Module):
     def __init__(
@@ -79,13 +78,13 @@ class BaseDecoder(nn.Module):
             nn.Linear(8, 16),
             nn.LeakyReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(16, output_size)
+            nn.Linear(16, output_size),
         )
 
     def forward(
         self,
         z: torch.Tensor,
-        ):
+    ):
         """[summary]
 
         Parameters
@@ -102,7 +101,8 @@ class BaseDecoder(nn.Module):
         x = self.model(z)
         # |x| = (batch_size, output_size)
         return x
-    
+
+
 class BaseSeq2Seq(nn.Module):
     def __init__(
         self,
@@ -126,21 +126,13 @@ class BaseSeq2Seq(nn.Module):
         """
         super().__init__()
 
-        self.encoder = BaseEncoder(
-            input_size,
-            hidden_size,
-            dropout_p
-        )
-        self.decoder = BaseDecoder(
-            hidden_size,
-            output_size,
-            dropout_p
-        )
+        self.encoder = BaseEncoder(input_size, hidden_size, dropout_p)
+        self.decoder = BaseDecoder(hidden_size, output_size, dropout_p)
 
     def forward(
         self,
         x: torch.Tensor,
-        ):
+    ):
         """[summary]
 
         Parameters
@@ -153,7 +145,7 @@ class BaseSeq2Seq(nn.Module):
         recon_x
             reconstuction result of input data
         """
-        
+
         z = self.encoder(x)
         recon_x = self.decoder(z)
 

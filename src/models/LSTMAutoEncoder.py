@@ -52,6 +52,7 @@ class LSTMEncoder(nn.Module):
         # |h[1]| = (num_layers, batch_size, hidden_size) : cell state
         return h
 
+
 class LSTMDecoder(nn.Module):
     def __init__(
         self,
@@ -76,23 +77,16 @@ class LSTMDecoder(nn.Module):
         super().__init__()
 
         self.lstm = nn.LSTM(
-            input_size=input_size + hidden_size, # 이전 input data와 hidden state
+            input_size=input_size + hidden_size,  # 이전 input data와 hidden state
             hidden_size=hidden_size,
             num_layers=num_layers,
             dropout=dropout_p,
             batch_first=True,
         )
 
-        self.last_fully = nn.Linear(
-            in_features=hidden_size, out_features=input_size
-        )
+        self.last_fully = nn.Linear(in_features=hidden_size, out_features=input_size)
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        y_t_1: torch.Tensor,
-        h_t_1: torch.Tensor
-        ):
+    def forward(self, x: torch.Tensor, y_t_1: torch.Tensor, h_t_1: torch.Tensor):
         """[summary]
 
         Parameters
@@ -128,9 +122,10 @@ class LSTMDecoder(nn.Module):
         # |h_t[1]| = (num_layers, batch_size, hidden_size) : cell state
         pred = self.last_fully(y_t.squeeze(1))
         # |pred| = (batch_size, input_size)
-        
+
         return pred, y_t, h_t
-    
+
+
 class Seq2Seq(nn.Module):
     def __init__(
         self,
@@ -157,25 +152,11 @@ class Seq2Seq(nn.Module):
         """
         super().__init__()
 
-        self.encoder = LSTMEncoder(
-            input_size,
-            hidden_size,
-            num_layers,
-            dropout_p
-        )
-        self.decoder = LSTMDecoder(
-            input_size,
-            hidden_size,
-            num_layers,
-            dropout_p
-        )
+        self.encoder = LSTMEncoder(input_size, hidden_size, num_layers, dropout_p)
+        self.decoder = LSTMDecoder(input_size, hidden_size, num_layers, dropout_p)
         self.seq_len = seq_len
 
-    def forward(
-        self,
-        enc_x: torch.Tensor,
-        dec_x: torch.Tensor
-        ):
+    def forward(self, enc_x: torch.Tensor, dec_x: torch.Tensor):
         """[summary]
 
         Parameters
@@ -209,7 +190,8 @@ class Seq2Seq(nn.Module):
             preds[:, i, :] = pred
         # |preds| = (batch_size, seq_len, input_size)
         return preds
-    
+
+
 # class CNNEncoder(nn.Module):
 #     def __init__(self, in_channels: int = 1):
 #         """make CNNEncoder

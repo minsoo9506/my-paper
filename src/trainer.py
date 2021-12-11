@@ -47,6 +47,7 @@ class BaseTrainer:
 
         if use_wandb:
             import wandb
+
             wandb.login()
             wandb.init(project=config.project, config=config)
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
