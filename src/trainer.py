@@ -63,6 +63,7 @@ class BaseTrainer:
             if valid_loss < lowest_loss:
                 lowest_loss = valid_loss
                 best_model = deepcopy(self.model.state_dict())
+                early_stop_round = 0
             else:
                 early_stop_round += 1
             if early_stop_round == config.early_stop_round:
