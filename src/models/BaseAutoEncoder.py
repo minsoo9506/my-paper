@@ -155,6 +155,6 @@ class BaseSeq2Seq(nn.Module):
         """
         
         z = self.encoder(x)
-        recon_x = self.encoder(z)
+        recon_x = self.decoder(z)
 
         return recon_x
