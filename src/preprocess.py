@@ -81,8 +81,8 @@ def split_train_valid_test(data_name: str, train_ratio: float = 0.8):
     
     train_x, valid_x, test_x = (
         normalized_data[:train_end_idx],
-        normalize_data[train_end_idx:val_end_idx],
-        normalize_data[val_end_idx:],
+        normalized_data[train_end_idx:val_end_idx],
+        normalized_data[val_end_idx:],
     )
     
     train_y, valid_y, test_y = (
