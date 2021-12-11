@@ -16,8 +16,9 @@ class BaseTrainer:
         for input_x, _ in train_loader:
             if device != "cpu":
                 input_x = input_x.to(device)
+                output_x = input_x.to(device)
             y_hat = self.model(input_x)
-            loss = self.crit(y_hat, input_x)
+            loss = self.crit(y_hat, output_x)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -32,11 +33,9 @@ class BaseTrainer:
             for input_x, _ in val_loader:
                 if device != "cpu":
                     input_x = input_x.to(device)
+                    output_x = input_x.to(device)
                 y_hat = self.model(input_x)
-                loss = self.crit(y_hat, input_x)
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+                loss = self.crit(y_hat, output_x)
                 # prevent memory leak
                 total_loss += float(loss)
             return total_loss / len(val_loader)
