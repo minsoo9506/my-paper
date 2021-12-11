@@ -3,11 +3,13 @@ import numpy as np
 PATH = "../UCR_Anomaly_FullData/"
 
 
-def normalize_data(data_name: str, train_end_idx: int):
+def normalize_data(PATH: str, data_name: str, train_end_idx: int):
     """make normalized data
 
     Parameters
     ----------
+    PATH : str
+        [description]
     data_name : str
         [description]
     train_end_idx : int
@@ -15,7 +17,7 @@ def normalize_data(data_name: str, train_end_idx: int):
 
     Returns
     -------
-    normalize_data : np.ndarray
+    normalized_data : np.ndarray
         [description]
     """
     data_path = PATH + data_name
@@ -26,9 +28,9 @@ def normalize_data(data_name: str, train_end_idx: int):
     train_mean = np.mean(train_data)
     train_std = np.std(train_data)
     
-    normalize_data = (data - train_mean) / train_std
+    normalized_data = (data - train_mean) / train_std
     
-    return normalize_data
+    return normalized_data
 
 def make_y_label(data_len: int, data_name: str):
     """make label of data
@@ -47,15 +49,16 @@ def make_y_label(data_len: int, data_name: str):
     """
     y_label = np.zeros(data_len)
     data_name_split = data_name.split("_")
-    abnormal_start_idx, abnormal_end_idx = data_name_split[-2], data_name_split[-1]
+    abnormal_start_idx, abnormal_end_idx = int(data_name_split[-2]), int(data_name_split[-1])
     y_label[abnormal_start_idx:abnormal_end_idx] = 1
     return y_label
 
-def split_train_valid_test(data_name: str, train_ratio: float = 0.8):
+def split_train_valid_test(PATH: str, data_name: str, train_ratio: float = 0.8):
     """train, valid, test data로 나누기
 
     Parameters
     ----------
+    PATH : str
     data_name : str
     train_ratio : float, optional
         validation data ratio, by default 0.8
@@ -69,14 +72,14 @@ def split_train_valid_test(data_name: str, train_ratio: float = 0.8):
     valid_y : np.ndarray
     test_y : np.ndarray
     """
-    data_path = PATH + data_name
-    data_path_split = data_path.split("_")
-    train_end_idx = int(data_path_split[-3] * train_ratio)
-    val_end_idx = data_path_split[-3]
+
+    data_name_split = data_name.split("_")
+    train_end_idx = int(int(data_name_split[-3]) * train_ratio)
+    val_end_idx = int(data_name_split[-3])
     
-    normalized_data = normalize_data(data_name, train_end_idx)
+    normalized_data = normalize_data(PATH, data_name, train_end_idx)
     
-    data_len = len(normalize_data)
+    data_len = len(normalized_data)
     y_label = make_y_label(data_len, data_name)
     
     train_x, valid_x, test_x = (
