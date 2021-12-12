@@ -34,4 +34,16 @@ class WindowBasedDataset(Dataset):
         return self.x.shape[0]
 
     def __getitem__(self, idx: int):
+        """[summary]
+
+        Parameters
+        ----------
+        idx : int
+            [description]
+
+        Returns
+        -------
+        self.x[idx, :] : torch.tensor
+        self.y[idx, :] : torch.tensor
+        """
         return self.x[idx, :], self.y[idx, :]
