@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from dataload.window_based import WindowBasedDataset
+from dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
 
 
 class BaseTrainer:
@@ -137,16 +137,15 @@ class NewTrainer:
         train_loader = DataLoader(
             train_dataset, shuffle=False, batch_size=config.batch_size
         )
-        data_len = len(train_x) - config.window_size + 1
         
         # train reconstruction error
+        data_len = len(train_x) - config.window_size + 1
         train_recon_error = np.zeros(data_len)
         
         # 특정 에포크 지나면 
 
         if use_wandb:
             import wandb
-
             wandb.login()
             wandb.init(project=config.project, config=config)
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
@@ -155,13 +154,15 @@ class NewTrainer:
             if (epoch_index + 1) >= config.initial_epochs:
                 train_loss, train_recon_error = self._train(train_loader, True, train_recon_error,  config.device)
                 valid_loss = self._validate(val_loader, config.device)
+                # calculate weight
                 sample_weight = 1 - train_recon_error / np.max(train_recon_error)
-                # weight로 이용하여 sampling with replacement
+                # sampling with weight
+                train_dataset = WeightedWindowBasedDataset(train_x, train_y, config.window_size, sample_weight)
+                train_loader = DataLoader(
+                    train_dataset, shuffle=False, batch_size=config.batch_size
+                )
                 
-                ##################################
-                # dataset 만들고 dataloader 만들기 
-                # WeightedWindowBasedDataset 이용!
-                ##################################
+            # 나중에 debugging해서 어떤 데이터들이 sample에서 빠지는지 확인 필요 #
                 
             else:
                 train_loss = self._train(train_loader, False, train_recon_error,  config.device)
