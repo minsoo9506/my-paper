@@ -79,9 +79,8 @@ class WeightedWindowBasedDataset(Dataset):
         sampled_idx = np.random.choice(idx, size=len(idx), replace=True, p=weight)
         sampled_idx = np.sort(sampled_idx)
         
-        ####################################
-        # idx를 통해서 indexing하는 코드 추가
-        ####################################
+        self.x = self.x[sampled_idx]
+        self.y = self.y[sampled_idx]
         
         self.x = torch.tensor(self.x, dtype=torch.float32)
         self.y = torch.tensor(self.y, dtype=torch.float32)
