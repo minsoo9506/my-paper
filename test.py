@@ -19,6 +19,9 @@ import random
 import numpy as np
 p = np.array([0.1,0.1,0.2,0.3,0.3])
 x = np.zeros((5,5))
+x[1,:] = 1
+x[2,:] = 2
 idx = np.arange(len(x))
 result = np.sort(np.random.choice(idx, size=len(idx) ,replace=True, p=p))
 print(result)
+print(x[result])
