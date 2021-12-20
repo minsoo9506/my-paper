@@ -48,6 +48,7 @@ class WindowBasedDataset(Dataset):
         """
         return self.x[idx, :], self.y[idx, :]
 
+
 class WeightedWindowBasedDataset(Dataset):
     def __init__(self, x: np.ndarray, y: np.ndarray, window: int, weight: np.ndarray):
         """make window based data, sampling with replacement
@@ -78,10 +79,10 @@ class WeightedWindowBasedDataset(Dataset):
         idx = np.arange(len(self.x))
         sampled_idx = np.random.choice(idx, size=len(idx), replace=True, p=weight)
         sampled_idx = np.sort(sampled_idx)
-        
+
         self.x = self.x[sampled_idx]
         self.y = self.y[sampled_idx]
-        
+
         self.x = torch.tensor(self.x, dtype=torch.float32)
         self.y = torch.tensor(self.y, dtype=torch.float32)
 
