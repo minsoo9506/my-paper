@@ -155,9 +155,12 @@ class NewTrainer:
                 train_loss, train_recon_error = self._train(train_loader, True, train_recon_error,  config.device)
                 valid_loss = self._validate(val_loader, config.device)
                 # calculate weight
-                sample_weight = 1 - train_recon_error / np.max(train_recon_error)
+                sample_weight = 1 - train_recon_error / np.sum(train_recon_error)
+                sample_weight = sample_weight / np.sum(sample_weight)
                 # sampling with weight
-                train_dataset = WeightedWindowBasedDataset(train_x, train_y, config.window_size, sample_weight)
+                train_dataset = WeightedWindowBasedDataset(
+                    train_x, train_y, config.window_size, sample_weight
+                )
                 train_loader = DataLoader(
                     train_dataset, shuffle=False, batch_size=config.batch_size
                 )
