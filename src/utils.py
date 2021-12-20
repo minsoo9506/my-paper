@@ -1,4 +1,10 @@
-from sklearn.metrics import recall_score, precision_score, accuracy_score, roc_auc_score, f1_score
+from sklearn.metrics import (
+    recall_score,
+    precision_score,
+    accuracy_score,
+    roc_auc_score,
+    f1_score,
+)
 import numpy as np
 
 
