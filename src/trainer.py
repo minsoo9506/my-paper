@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
+from src.dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
 
 
 class BaseTrainer:
@@ -71,12 +71,12 @@ class BaseTrainer:
             if early_stop_round == config.early_stop_round:
                 print(f"Early Stopped!")
                 print(
-                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                    f"Epoch {epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
                 )
                 break
             if (epoch_index + 1) % 10 == 0:
                 print(
-                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                    f"Epoch {epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
                 )
         self.model.load_state_dict(best_model)
         return self.model
@@ -99,16 +99,18 @@ class NewTrainer:
                 input_x = input_x.to(device)
                 output_x = input_x.to(device)
             y_hat = self.model(input_x)
-            # calculate train recon error
-            if cal_train_recon_error:
-                anomaly_score = abs(input_x - y_hat)
-                mean_anomaly_score = torch.mean(anomaly_score, 1).numpy()
-                train_recon_error[idx:idx+input_x_batch_size] = mean_anomaly_score
-                idx += input_x_batch_size
             loss = self.crit(y_hat, output_x)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+            # calculate train recon error
+            if cal_train_recon_error:
+                anomaly_score = abs(input_x - y_hat)
+                mean_anomaly_score = (
+                    torch.mean(anomaly_score, 1).detach().to("cpu").numpy()
+                )
+                train_recon_error[idx : idx + input_x_batch_size] = mean_anomaly_score
+                idx += input_x_batch_size
             # prevent memory leak
             total_loss += float(loss)
         return total_loss / len(train_loader), train_recon_error
@@ -131,28 +133,32 @@ class NewTrainer:
         lowest_loss = np.inf
         best_model = None
         early_stop_round = 0
-        
+
         # 일단 처음 train loader 만들기
         train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
         train_loader = DataLoader(
             train_dataset, shuffle=False, batch_size=config.batch_size
         )
-        
+
         # train reconstruction error
         data_len = len(train_x) - config.window_size + 1
         train_recon_error = np.zeros(data_len)
-        
-        # 특정 에포크 지나면 
 
         if use_wandb:
             import wandb
+
             wandb.login()
             wandb.init(project=config.project, config=config)
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
 
-        for epoch_index in range(config.n_epochs):
-            if (epoch_index + 1) >= config.initial_epochs:
-                train_loss, train_recon_error = self._train(train_loader, True, train_recon_error,  config.device)
+        for epoch_index in range(1, config.n_epochs + 1):
+            epoch_index
+            if (epoch_index >= config.initial_epochs) and (
+                epoch_index % config.sampling_term == 0
+            ):
+                train_loss, train_recon_error = self._train(
+                    train_loader, True, train_recon_error, config.device
+                )
                 valid_loss = self._validate(val_loader, config.device)
                 # calculate weight
                 sample_weight = 1 - train_recon_error / np.sum(train_recon_error)
@@ -164,11 +170,13 @@ class NewTrainer:
                 train_loader = DataLoader(
                     train_dataset, shuffle=False, batch_size=config.batch_size
                 )
-                
+
             # 나중에 debugging해서 어떤 데이터들이 sample에서 빠지는지 확인 필요 #
-                
+
             else:
-                train_loss = self._train(train_loader, False, train_recon_error,  config.device)
+                train_loss = self._train(
+                    train_loader, False, train_recon_error, config.device
+                )
                 valid_loss = self._validate(val_loader, config.device)
 
             if use_wandb:
@@ -182,18 +190,17 @@ class NewTrainer:
             else:
                 early_stop_round += 1
             if early_stop_round == config.early_stop_round:
-                print(f"Early Stopped!")
+                print(f"Early Stopped! in Epoch {epoch_index}.")
                 print(
-                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                    f"Epoch {epoch_index}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
                 )
                 break
-            if (epoch_index + 1) % 10 == 0:
+            if (epoch_index) % 10 == 0:
                 print(
-                    f"Epoch{epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                    f"Epoch {epoch_index}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
                 )
         self.model.load_state_dict(best_model)
         return self.model
-
 
 
 # class Seq2SeqTrainer:
