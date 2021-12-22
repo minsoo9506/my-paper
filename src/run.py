@@ -1,35 +1,40 @@
 import argparse
-import pandas as pd
-import numpy as np
-import random
+
+from src.models.BaseAutoEncoder import BaseSeq2Seq
+from src.preprocess import split_train_valid_test
+from src.dataload.window_based import WindowBasedDataset
+from src.trainer import NewTrainer
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
+import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+import pandas as pd
 
-from models.seq2seq import Seq2Seq
-from dataload.seq2seqLoad import Seq2SeqDataset
-from trainer import Seq2SeqTrainer
+
 
 
 def define_argparser():
     p = argparse.ArgumentParser()
-
-    p.add_argument("--train_data_name", type=str)
-    p.add_argument("--valid_data_name", type=str)
-    p.add_argument("--model_name", type=str, default="seq2seq")
-    p.add_argument("--project", type=str, default="base_seq2seq")
+    # set up
+    p.add_argument("--data_name", type=str)
+    p.add_argument("--model_name", type=str, default="BaseSeq2Seq")
     p.add_argument("--gpu_id", type=int, default=0 if torch.cuda.is_available() else -1)
-
-    p.add_argument("--seq_len", type=int, default=16)
-    p.add_argument("--num_layers", type=int, default=2)
-    p.add_argument("--hidden_size", type=int, default=32)
-
-    p.add_argument("--batch_size", type=int, default=64)
-    p.add_argument("--n_epochs", type=int, default=5)
+    # model
+    p.add_argument("--hidden_size", type=int, default=2)
+    # data
+    p.add_argument("--train_ratio", type=int, default=.7)
+    p.add_argument("--batch_size", type=int, default=256)
+    p.add_argument("--window_size", type=int, default=60)
+    # experiment
+    p.add_argument("--n_epochs", type=int, default=200)
     p.add_argument("--early_stop_round", type=int, default=10)
-
+    p.add_argument("--initial_epochs", type=int, default=10)
+    p.add_argument("--sampling_term", type=int, default=10)
+    
     config = p.parse_args()
     device = "cpu" if config.gpu_id < 0 else "cuda:" + str(config.gpu_id)
     config.device = device
