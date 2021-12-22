@@ -126,7 +126,7 @@ class LSTMDecoder(nn.Module):
         return pred, y_t, h_t
 
 
-class Seq2Seq(nn.Module):
+class LSTMSeq2Seq(nn.Module):
     def __init__(
         self,
         input_size: int = 1,
