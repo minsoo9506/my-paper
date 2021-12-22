@@ -1,27 +1,47 @@
-# PATH = "./UCR_Anomaly_FullData/"
-# data_name = "001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt"
+# folder안에 있는 파일 이름 리스트로 저장
+import os
 
-# data_path = PATH + data_name
+PATH = './UCR_Anomaly_FullData'
+file_list = os.listdir(PATH)
 
-# import pandas as pd
-# import numpy as np
+print(file_list)
 
-# df = pd.read_csv(data_path, header=None)
+# 출력 결과 저장
+def cal(x, y):
+    return x + y, x * y
+    
+add_result1, mat_result1 = cal(1,1)
 
-# np_df = np.loadtxt(data_path)
-# print(np_df[:4])
+import pandas as pd
 
-# tmp = np.zeros(5)
-# tmp[1:2]=2
-# print(tmp)
+PATH = './run_results/'
+FILE_NAME = 'test.txt'
 
-import random
-import numpy as np
-p = np.array([0.1,0.1,0.2,0.3,0.3])
-x = np.zeros((5,5))
-x[1,:] = 1
-x[2,:] = 2
-idx = np.arange(len(x))
-result = np.sort(np.random.choice(idx, size=len(idx) ,replace=True, p=p))
-print(result)
-print(x[result])
+df = pd.read_csv(PATH + FILE_NAME)
+
+df = df.append(
+    {
+        'data_name' : 'result1',
+        'add' : add_result1,
+        'mat' : mat_result1
+    },
+    ignore_index=True
+)
+
+df.to_csv(PATH + FILE_NAME, index=False)
+
+import datetime
+now = datetime.datetime.now()
+
+# result를 어떤 식으로 저장할지 고민 필요
+# data 마다 result.txt 만들고
+    # model, 성능지표들, now, config정보들
+    # -> 각 data마다 성능지표들 통계량 계산가능 (mean, std)
+    
+# 처음 txt 파일 만들때
+import os
+PATH = './UCR_Anomaly_FullData'
+file_list = os.listdir(PATH)
+for file_name in file_list:
+    df = pd.DataFrame(columns = ['Name' , 'Price', 'Stock']) # 정해진 컬럼 넣고
+    df.to_csv(PATH + '/result_' + file_name, index=False)
