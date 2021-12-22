@@ -7,3 +7,7 @@ UCR_Anomaly_FullData
 
 # reference material
 UCR_TimeSeriesAnomalyDatasets2021
+
+# folder
+saved_models
+run_results
