@@ -14,8 +14,6 @@ import random
 import pandas as pd
 
 
-
-
 def define_argparser():
     p = argparse.ArgumentParser()
     p.add_argument("--total_iter", type=int, default=5)
@@ -26,7 +24,7 @@ def define_argparser():
     # model
     p.add_argument("--hidden_size", type=int, default=4)
     # data
-    p.add_argument("--train_ratio", type=int, default=.7)
+    p.add_argument("--train_ratio", type=int, default=0.7)
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--window_size", type=int, default=60)
     # experiment
@@ -34,7 +32,7 @@ def define_argparser():
     p.add_argument("--early_stop_round", type=int, default=10)
     p.add_argument("--initial_epochs", type=int, default=10)
     p.add_argument("--sampling_term", type=int, default=5)
-    
+
     config = p.parse_args()
     device = "cpu" if config.gpu_id < 0 else "cuda:" + str(config.gpu_id)
     config.device = device
@@ -48,24 +46,26 @@ def main(config):
     np.random.seed(0)
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
-    
+
     PATH = "../UCR_Anomaly_FullData/"
 
-    train_x, valid_x, test_x, train_y, valid_y, test_y = split_train_valid_test(PATH, config.data_name, config.train_ratio)
-    
-    print(f'train_x.shape : {train_x.shape}')
-    print(f'train_y.shape : {train_y.shape}')
-    print(f'valid_x.shape : {valid_x.shape}')
-    print(f'valid_y.shape : {valid_y.shape}')
-    print(f'test_x.shape  : {test_x.shape}')
-    print(f'test_y.shape  : {test_y.shape}')
-    
+    train_x, valid_x, test_x, train_y, valid_y, test_y = split_train_valid_test(
+        PATH, config.data_name, config.train_ratio
+    )
+
+    print(f"train_x.shape : {train_x.shape}")
+    print(f"train_y.shape : {train_y.shape}")
+    print(f"valid_x.shape : {valid_x.shape}")
+    print(f"valid_y.shape : {valid_y.shape}")
+    print(f"test_x.shape  : {test_x.shape}")
+    print(f"test_y.shape  : {test_y.shape}")
+
     train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
     valid_dataset = WindowBasedDataset(valid_x, valid_y, config.window_size)
     test_dataset = WindowBasedDataset(test_x, test_y, config.window_size)
-    
+
     train_dataloader = DataLoader(
-    train_dataset, shuffle=False, batch_size=config.batch_size
+        train_dataset, shuffle=False, batch_size=config.batch_size
     )
     valid_dataloader = DataLoader(
         valid_dataset, shuffle=False, batch_size=config.batch_size
@@ -73,7 +73,7 @@ def main(config):
     test_dataloader = DataLoader(
         test_dataset, shuffle=False, batch_size=config.batch_size
     )
-    
+
     model = BaseSeq2Seq(
         input_size=config.window_size,
         hidden_size=config.hidden_size,
@@ -83,34 +83,27 @@ def main(config):
 
     optimizer = optim.Adam(model.parameters())
     criterion = nn.MSELoss()
-    
-    if config.trainer_name == 'NewTrainer':
-        trainer = NewTrainer(
-            model=model,
-            optimizer=optimizer,
-            crit=criterion
-        )
+
+    if config.trainer_name == "NewTrainer":
+        trainer = NewTrainer(model=model, optimizer=optimizer, crit=criterion)
 
         best_model = trainer.train(
-            train_x=train_x, train_y=train_y,
+            train_x=train_x,
+            train_y=train_y,
             val_loader=valid_dataloader,
             config=config,
-            use_wandb=False
+            use_wandb=False,
         )
     else:
-        trainer = BaseTrainer(
-            model=model,
-            optimizer=optimizer,
-            crit=criterion
-        )
+        trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
 
         best_model = trainer.train(
             train_loader=train_dataloader,
             val_loader=valid_dataloader,
             config=config,
-            use_wandb=False
+            use_wandb=False,
         )
-    
+
     # # save best model
     # from datetime import datetime
 
