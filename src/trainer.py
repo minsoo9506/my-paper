@@ -192,12 +192,12 @@ class NewTrainer:
             if early_stop_round == config.early_stop_round:
                 print(f"Early Stopped! in Epoch {epoch_index}.")
                 print(
-                    f"Epoch {epoch_index}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                    f"Epoch {epoch_index + 0}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
                 )
                 break
             if (epoch_index) % 10 == 0:
                 print(
-                    f"Epoch {epoch_index}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
+                    f"Epoch {epoch_index + 0}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
                 )
         self.model.load_state_dict(best_model)
         return self.model
