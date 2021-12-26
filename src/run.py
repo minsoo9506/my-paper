@@ -1,9 +1,10 @@
 import argparse
 
-from src.models.BaseAutoEncoder import BaseSeq2Seq
-from src.preprocess import split_train_valid_test
-from src.dataload.window_based import WindowBasedDataset
-from src.trainer import NewTrainer, BaseTrainer
+from models.BaseAutoEncoder import BaseSeq2Seq
+from preprocess import split_train_valid_test
+from dataload.window_based import WindowBasedDataset
+from trainer import NewTrainer, BaseTrainer
+from utils import get_score, get_total_anomaly_score, get_true_anomaly_info
 
 import torch
 import torch.nn as nn
@@ -13,10 +14,21 @@ import numpy as np
 import random
 import pandas as pd
 
+from sklearn.metrics import (
+    recall_score,
+    precision_score,
+    accuracy_score,
+    roc_auc_score,
+    f1_score,
+)
+
+import datetime
+import os
+
 
 def define_argparser():
     p = argparse.ArgumentParser()
-    p.add_argument("--total_iter", type=int, default=5)
+    p.add_argument("--total_iter", type=int, default=1)
     # set up
     p.add_argument("--data_name", type=str)
     p.add_argument("--trainer_name", type=str, default="BaseTrainer")
@@ -60,9 +72,10 @@ def main(config):
     print(f"test_x.shape  : {test_x.shape}")
     print(f"test_y.shape  : {test_y.shape}")
 
+    # data setting
     train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
     valid_dataset = WindowBasedDataset(valid_x, valid_y, config.window_size)
-    test_dataset = WindowBasedDataset(test_x, test_y, config.window_size)
+    # test_dataset = WindowBasedDataset(test_x, test_y, config.window_size)
 
     train_dataloader = DataLoader(
         train_dataset, shuffle=False, batch_size=config.batch_size
@@ -70,39 +83,154 @@ def main(config):
     valid_dataloader = DataLoader(
         valid_dataset, shuffle=False, batch_size=config.batch_size
     )
-    test_dataloader = DataLoader(
-        test_dataset, shuffle=False, batch_size=config.batch_size
+    # test_dataloader = DataLoader(
+    #     test_dataset, shuffle=False, batch_size=config.batch_size
+    # )
+
+    total_x = np.concatenate([train_x, valid_x, test_x])
+    total_y = np.concatenate([train_y, valid_y, test_y])
+    splited_data_name = config.data_name.split("_")
+    abnormal_start_idx, abnormal_end_idx = int(splited_data_name[-2]), int(
+        splited_data_name[-1]
     )
+    total_y[abnormal_start_idx - config.window_size : abnormal_start_idx] = 1
+    total_y[abnormal_end_idx : abnormal_end_idx + config.window_size] = 1
 
-    model = BaseSeq2Seq(
-        input_size=config.window_size,
-        hidden_size=config.hidden_size,
-        output_size=config.window_size,
-        dropout_p=0.2,
-    ).to(config.device)
+    for iter in range(config.total_iter):
+        print(f"-----iteration {iter} starts-----")
+        # model setting
+        model = BaseSeq2Seq(
+            input_size=config.window_size,
+            hidden_size=config.hidden_size,
+            output_size=config.window_size,
+            dropout_p=0.2,
+        ).to(config.device)
 
-    optimizer = optim.Adam(model.parameters())
-    criterion = nn.MSELoss()
+        optimizer = optim.Adam(model.parameters())
+        criterion = nn.MSELoss()
 
-    if config.trainer_name == "NewTrainer":
-        trainer = NewTrainer(model=model, optimizer=optimizer, crit=criterion)
+        # train
+        if config.trainer_name == "NewTrainer":
+            trainer = NewTrainer(model=model, optimizer=optimizer, crit=criterion)
 
-        best_model = trainer.train(
-            train_x=train_x,
-            train_y=train_y,
-            val_loader=valid_dataloader,
-            config=config,
-            use_wandb=False,
+            return_epoch, best_model = trainer.train(
+                train_x=train_x,
+                train_y=train_y,
+                val_loader=valid_dataloader,
+                config=config,
+                use_wandb=False,
+            )
+        if config.trainer_name == "BaseTrainer":
+            trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
+
+            return_epoch, best_model = trainer.train(
+                train_loader=train_dataloader,
+                val_loader=valid_dataloader,
+                config=config,
+                use_wandb=False,
+            )
+
+        # test
+        total_dataset = WindowBasedDataset(total_x, total_y, config.window_size)
+        total_dataloader = DataLoader(
+            total_dataset, shuffle=False, batch_size=config.batch_size
         )
-    else:
-        trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
-
-        best_model = trainer.train(
-            train_loader=train_dataloader,
-            val_loader=valid_dataloader,
-            config=config,
-            use_wandb=False,
+        best_model.to("cpu")
+        # get anomaly score of all data
+        window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
+        window_anomaly_score_result = get_total_anomaly_score(
+            total_dataloader, best_model, window_anomaly_score_result
         )
+
+        stat_true_anomaly_scores = get_true_anomaly_info(
+            window_anomaly_score_result, total_y
+        )
+
+        train_anomaly_score = window_anomaly_score_result[
+            : len(train_x) - config.window_size + 1
+        ]
+
+        val_anomaly_score = window_anomaly_score_result[
+            : len(train_x) - config.window_size + 1
+        ]
+
+        test_anomaly_score = window_anomaly_score_result[
+            : len(train_x) - config.window_size + 1
+        ]
+
+        avg_train_anomaly_score, std_train_anomaly_score = np.mean(
+            train_anomaly_score
+        ), np.std(train_anomaly_score)
+        avg_val_anomaly_score, std_val_anomaly_score = np.mean(
+            val_anomaly_score
+        ), np.std(val_anomaly_score)
+        avg_test_anomaly_score, std_test_anomaly_score = np.mean(
+            test_anomaly_score
+        ), np.std(test_anomaly_score)
+
+        max_train_anomaly_score = np.max(train_anomaly_score)
+        threshold_list = np.arange(0.8, 1.6, 0.2) * max_train_anomaly_score
+
+        scores = []
+        for threshold in threshold_list:
+            score = get_score(window_anomaly_score_result, total_y, threshold, config)
+            scores.append(score)
+
+        # save result
+        cols = [
+            "model",
+            "now",
+            "return_epoch",
+            "avg_train_anomaly_score",
+            "std_train_anomaly_score",
+            "avg_val_anomaly_score",
+            "std_val_anomaly_score",
+            "avg_test_anomaly_score",
+            "std_test_anomaly_score",
+            "avg_true_anomaly_score",
+            "std_true_anomaly_score",
+            "accuracy",
+            "precision",
+            "recall",
+            "f1_score",
+            "roc_auc" "threshold",
+        ]
+
+        PATH = "../run_results/"
+        now = datetime.datetime.now()
+
+        file_list = os.listdir(PATH)
+        if config.data_name not in file_list:
+            df = pd.DataFrame(columns=cols)
+            df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
+
+        df = pd.read_csv(PATH + "result_" + config.data_name + ".csv")
+
+        for idx, threshold in enumerate(threshold_list):
+            df = df.append(
+                {
+                    "trainer_name": config.trainer_name,
+                    "now": now,
+                    "return_epoch": return_epoch,
+                    "avg_train_anomaly_score": round(avg_train_anomaly_score, 4),
+                    "std_train_anomaly_score": round(std_train_anomaly_score, 4),
+                    "avg_val_anomaly_score": round(avg_val_anomaly_score, 4),
+                    "std_val_anomaly_score": round(std_val_anomaly_score, 4),
+                    "avg_test_anomaly_score": round(avg_test_anomaly_score, 4),
+                    "std_test_anomaly_score": round(std_test_anomaly_score, 4),
+                    "avg_true_anomaly_score": round(stat_true_anomaly_scores[0], 4),
+                    "std_true_anomaly_score": round(stat_true_anomaly_scores[1], 4),
+                    "accuracy": round(scores[idx][0], 4),
+                    "precision": round(scores[idx][1], 4),
+                    "recall": round(scores[idx][2], 4),
+                    "f1_score": round(scores[idx][3], 4),
+                    "roc_auc": round(scores[idx][4], 4),
+                    "threshold": threshold,
+                },
+                ignore_index=True,
+            )
+
+        df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
     # # save best model
     # from datetime import datetime
