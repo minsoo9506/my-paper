@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from src.dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
+from dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
 
 
 class BaseTrainer:
@@ -46,6 +46,7 @@ class BaseTrainer:
         lowest_loss = np.inf
         best_model = None
         early_stop_round = 0
+        return_epoch = 0
 
         if use_wandb:
             import wandb
@@ -69,17 +70,15 @@ class BaseTrainer:
             else:
                 early_stop_round += 1
             if early_stop_round == config.early_stop_round:
-                print(f"Early Stopped!")
-                print(
-                    f"Epoch {epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
-                )
+                print(f"Early Stopped! in Epoch {epoch_index + 1}:")
+                print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+                return_epoch = epoch_index
                 break
             if (epoch_index + 1) % 10 == 0:
-                print(
-                    f"Epoch {epoch_index+1}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
-                )
+                print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
+                print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
         self.model.load_state_dict(best_model)
-        return self.model
+        return return_epoch, self.model
 
 
 class NewTrainer:
@@ -133,6 +132,7 @@ class NewTrainer:
         lowest_loss = np.inf
         best_model = None
         early_stop_round = 0
+        return_epoch = 0
 
         # 일단 처음 train loader 만들기
         train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
@@ -151,8 +151,7 @@ class NewTrainer:
             wandb.init(project=config.project, config=config)
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
 
-        for epoch_index in range(1, config.n_epochs + 1):
-            epoch_index
+        for epoch_index in range(config.n_epochs + 1):
             if (epoch_index >= config.initial_epochs) and (
                 epoch_index % config.sampling_term == 0
             ):
@@ -174,7 +173,7 @@ class NewTrainer:
             # 나중에 debugging해서 어떤 데이터들이 sample에서 빠지는지 확인 필요 #
 
             else:
-                train_loss = self._train(
+                train_loss, _ = self._train(
                     train_loader, False, train_recon_error, config.device
                 )
                 valid_loss = self._validate(val_loader, config.device)
@@ -190,17 +189,15 @@ class NewTrainer:
             else:
                 early_stop_round += 1
             if early_stop_round == config.early_stop_round:
-                print(f"Early Stopped! in Epoch {epoch_index}.")
-                print(
-                    f"Epoch {epoch_index + 0}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
-                )
+                print(f"Early Stopped! in Epoch {epoch_index + 1}:")
+                print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+                return_epoch = epoch_index
                 break
-            if (epoch_index) % 10 == 0:
-                print(
-                    f"Epoch {epoch_index + 0}/{config.n_epochs}: train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}"
-                )
-        self.model.load_state_dict(best_model)
-        return self.model
+            if (epoch_index + 1) % 10 == 0:
+                print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
+                print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+            self.model.load_state_dict(best_model)
+        return return_epoch, self.model
 
 
 # class Seq2SeqTrainer:
