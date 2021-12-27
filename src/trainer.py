@@ -43,7 +43,8 @@ class BaseTrainer:
             return total_loss / len(val_loader)
 
     def train(self, train_loader, val_loader, config, use_wandb):
-        lowest_loss = np.inf
+        lowest_train_loss = np.inf
+        lowest_val_loss = np.inf
         best_model = None
         early_stop_round = 0
         return_epoch = 0
@@ -63,8 +64,9 @@ class BaseTrainer:
                 wandb.log({"train_loss": train_loss})
                 wandb.log({"valid_loss": valid_loss})
 
-            if valid_loss < lowest_loss:
-                lowest_loss = valid_loss
+            if valid_loss < lowest_val_loss:
+                lowest_train_loss = train_loss
+                lowest_val_loss = valid_loss
                 best_model = deepcopy(self.model.state_dict())
                 early_stop_round = 0
             else:
@@ -78,7 +80,7 @@ class BaseTrainer:
                 print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
                 print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
         self.model.load_state_dict(best_model)
-        return return_epoch, self.model
+        return lowest_train_loss, lowest_val_loss, return_epoch, self.model
 
 
 class NewTrainer:
@@ -128,8 +130,9 @@ class NewTrainer:
                 total_loss += float(loss)
             return total_loss / len(val_loader)
 
-    def train(self, train_x, train_y, val_loader, config, use_wandb):
-        lowest_loss = np.inf
+    def train(self, train_x, train_y, val_loader, sampling_term ,config, use_wandb):
+        lowest_train_loss = np.inf
+        lowest_val_loss = np.inf
         best_model = None
         early_stop_round = 0
         return_epoch = 0
@@ -153,7 +156,7 @@ class NewTrainer:
 
         for epoch_index in range(config.n_epochs + 1):
             if (epoch_index >= config.initial_epochs) and (
-                epoch_index % config.sampling_term == 0
+                epoch_index % sampling_term == 0
             ):
                 train_loss, train_recon_error = self._train(
                     train_loader, True, train_recon_error, config.device
@@ -182,8 +185,9 @@ class NewTrainer:
                 wandb.log({"train_loss": train_loss})
                 wandb.log({"valid_loss": valid_loss})
 
-            if valid_loss < lowest_loss:
-                lowest_loss = valid_loss
+            if valid_loss < lowest_val_loss:
+                lowest_train_loss = train_loss
+                lowest_val_loss = valid_loss
                 best_model = deepcopy(self.model.state_dict())
                 early_stop_round = 0
             else:
@@ -197,7 +201,7 @@ class NewTrainer:
                 print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
                 print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
             self.model.load_state_dict(best_model)
-        return return_epoch, self.model
+        return lowest_train_loss, lowest_val_loss, return_epoch, self.model
 
 
 # class Seq2SeqTrainer:
