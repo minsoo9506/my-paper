@@ -34,7 +34,7 @@ def define_argparser():
     p.add_argument("--trainer_name", type=str, default="BaseTrainer")
     p.add_argument("--gpu_id", type=int, default=0 if torch.cuda.is_available() else -1)
     # model
-    p.add_argument("--hidden_size", type=int, default=4)
+    p.add_argument("--hidden_size", type=list, default=[2, 4, 8])
     # data
     p.add_argument("--train_ratio", type=int, default=0.7)
     p.add_argument("--batch_size", type=int, default=256)
@@ -42,8 +42,8 @@ def define_argparser():
     # experiment
     p.add_argument("--n_epochs", type=int, default=200)
     p.add_argument("--early_stop_round", type=int, default=10)
-    p.add_argument("--initial_epochs", type=int, default=10)
-    p.add_argument("--sampling_term", type=int, default=5)
+    # p.add_argument("--initial_epochs", type=int, default=10)
+    # p.add_argument("--sampling_term", type=list, default=[2, 4, 8])
 
     config = p.parse_args()
     device = "cpu" if config.gpu_id < 0 else "cuda:" + str(config.gpu_id)
@@ -96,12 +96,12 @@ def main(config):
     total_y[abnormal_start_idx - config.window_size : abnormal_start_idx] = 1
     total_y[abnormal_end_idx : abnormal_end_idx + config.window_size] = 1
 
-    for iter in range(config.total_iter):
-        print(f"-----iteration {iter} starts-----")
+    for hidden_size in config.hidden_size:
+        print(f"-----iteration {iter} starts with hidden_size={hidden_size}-----")
         # model setting
         model = BaseSeq2Seq(
             input_size=config.window_size,
-            hidden_size=config.hidden_size,
+            hidden_size=hidden_size,
             output_size=config.window_size,
             dropout_p=0.2,
         ).to(config.device)
@@ -109,26 +109,15 @@ def main(config):
         optimizer = optim.Adam(model.parameters())
         criterion = nn.MSELoss()
 
-        # train
-        if config.trainer_name == "NewTrainer":
-            trainer = NewTrainer(model=model, optimizer=optimizer, crit=criterion)
+        # train     
+        trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
 
-            return_epoch, best_model = trainer.train(
-                train_x=train_x,
-                train_y=train_y,
-                val_loader=valid_dataloader,
-                config=config,
-                use_wandb=False,
-            )
-        if config.trainer_name == "BaseTrainer":
-            trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
-
-            return_epoch, best_model = trainer.train(
-                train_loader=train_dataloader,
-                val_loader=valid_dataloader,
-                config=config,
-                use_wandb=False,
-            )
+        train_loss, val_loss, return_epoch, best_model = trainer.train(
+            train_loader=train_dataloader,
+            val_loader=valid_dataloader,
+            config=config,
+            use_wandb=False,
+        )
 
         # test
         total_dataset = WindowBasedDataset(total_x, total_y, config.window_size)
@@ -168,8 +157,7 @@ def main(config):
             test_anomaly_score
         ), np.std(test_anomaly_score)
 
-        max_train_anomaly_score = np.max(train_anomaly_score)
-        threshold_list = np.arange(0.8, 1.6, 0.2) * max_train_anomaly_score
+        threshold_list = avg_train_anomaly_score + np.arange(0, 3.5, 0.5) * std_train_anomaly_score
 
         scores = []
         for threshold in threshold_list:
@@ -178,9 +166,12 @@ def main(config):
 
         # save result
         cols = [
-            "model",
+            "trainer_name",
             "now",
             "return_epoch",
+            "hidden_size",
+            "train_loss",
+            "val_loss",
             "avg_train_anomaly_score",
             "std_train_anomaly_score",
             "avg_val_anomaly_score",
@@ -193,14 +184,18 @@ def main(config):
             "precision",
             "recall",
             "f1_score",
-            "roc_auc" "threshold",
+            "roc_auc",
+            "threshold",
+            "config"
         ]
 
         PATH = "../run_results/"
         now = datetime.datetime.now()
 
         file_list = os.listdir(PATH)
-        if config.data_name not in file_list:
+        file_name = "result_" + config.data_name + ".csv"
+        if file_name not in file_list:
+            print("New file generated!")
             df = pd.DataFrame(columns=cols)
             df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
@@ -212,6 +207,9 @@ def main(config):
                     "trainer_name": config.trainer_name,
                     "now": now,
                     "return_epoch": return_epoch,
+                    "hidden_size": hidden_size,
+                    "train_loss": round(train_loss, 4),
+                    "val_loss": round(val_loss, 4),
                     "avg_train_anomaly_score": round(avg_train_anomaly_score, 4),
                     "std_train_anomaly_score": round(std_train_anomaly_score, 4),
                     "avg_val_anomaly_score": round(avg_val_anomaly_score, 4),
@@ -225,7 +223,8 @@ def main(config):
                     "recall": round(scores[idx][2], 4),
                     "f1_score": round(scores[idx][3], 4),
                     "roc_auc": round(scores[idx][4], 4),
-                    "threshold": threshold,
+                    "threshold": round(threshold, 4),
+                    "config": config
                 },
                 ignore_index=True,
             )
