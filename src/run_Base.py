@@ -96,140 +96,141 @@ def main(config):
     total_y[abnormal_start_idx - config.window_size : abnormal_start_idx] = 1
     total_y[abnormal_end_idx : abnormal_end_idx + config.window_size] = 1
 
-    for hidden_size in config.hidden_size:
-        print(f"-----iteration {iter} starts with hidden_size={hidden_size}-----")
-        # model setting
-        model = BaseSeq2Seq(
-            input_size=config.window_size,
-            hidden_size=hidden_size,
-            output_size=config.window_size,
-            dropout_p=0.2,
-        ).to(config.device)
+    for iteration in range(config.total_iter):
+        for hidden_size in config.hidden_size:
+            print(f"-----iteration {iteration} starts with hidden_size={hidden_size}-----")
+            # model setting
+            model = BaseSeq2Seq(
+                input_size=config.window_size,
+                hidden_size=hidden_size,
+                output_size=config.window_size,
+                dropout_p=0.2,
+            ).to(config.device)
 
-        optimizer = optim.Adam(model.parameters())
-        criterion = nn.MSELoss()
+            optimizer = optim.Adam(model.parameters())
+            criterion = nn.MSELoss()
 
-        # train     
-        trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
+            # train     
+            trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
 
-        train_loss, val_loss, return_epoch, best_model = trainer.train(
-            train_loader=train_dataloader,
-            val_loader=valid_dataloader,
-            config=config,
-            use_wandb=False,
-        )
-
-        # test
-        total_dataset = WindowBasedDataset(total_x, total_y, config.window_size)
-        total_dataloader = DataLoader(
-            total_dataset, shuffle=False, batch_size=config.batch_size
-        )
-        best_model.to("cpu")
-        # get anomaly score of all data
-        window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
-        window_anomaly_score_result = get_total_anomaly_score(
-            total_dataloader, best_model, window_anomaly_score_result
-        )
-
-        stat_true_anomaly_scores = get_true_anomaly_info(
-            window_anomaly_score_result, total_y
-        )
-
-        train_anomaly_score = window_anomaly_score_result[
-            : len(train_x) - config.window_size + 1
-        ]
-
-        val_anomaly_score = window_anomaly_score_result[
-            : len(train_x) - config.window_size + 1
-        ]
-
-        test_anomaly_score = window_anomaly_score_result[
-            : len(train_x) - config.window_size + 1
-        ]
-
-        avg_train_anomaly_score, std_train_anomaly_score = np.mean(
-            train_anomaly_score
-        ), np.std(train_anomaly_score)
-        avg_val_anomaly_score, std_val_anomaly_score = np.mean(
-            val_anomaly_score
-        ), np.std(val_anomaly_score)
-        avg_test_anomaly_score, std_test_anomaly_score = np.mean(
-            test_anomaly_score
-        ), np.std(test_anomaly_score)
-
-        threshold_list = avg_train_anomaly_score + np.arange(0, 3.5, 0.5) * std_train_anomaly_score
-
-        scores = []
-        for threshold in threshold_list:
-            score = get_score(window_anomaly_score_result, total_y, threshold, config)
-            scores.append(score)
-
-        # save result
-        cols = [
-            "trainer_name",
-            "now",
-            "return_epoch",
-            "hidden_size",
-            "train_loss",
-            "val_loss",
-            "avg_train_anomaly_score",
-            "std_train_anomaly_score",
-            "avg_val_anomaly_score",
-            "std_val_anomaly_score",
-            "avg_test_anomaly_score",
-            "std_test_anomaly_score",
-            "avg_true_anomaly_score",
-            "std_true_anomaly_score",
-            "accuracy",
-            "precision",
-            "recall",
-            "f1_score",
-            "roc_auc",
-            "threshold",
-            "config"
-        ]
-
-        PATH = "../run_results/"
-        now = datetime.datetime.now()
-
-        file_list = os.listdir(PATH)
-        file_name = "result_" + config.data_name + ".csv"
-        if file_name not in file_list:
-            print("New file generated!")
-            df = pd.DataFrame(columns=cols)
-            df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
-
-        df = pd.read_csv(PATH + "result_" + config.data_name + ".csv")
-
-        for idx, threshold in enumerate(threshold_list):
-            df = df.append(
-                {
-                    "trainer_name": config.trainer_name,
-                    "now": now,
-                    "return_epoch": return_epoch,
-                    "hidden_size": hidden_size,
-                    "train_loss": round(train_loss, 4),
-                    "val_loss": round(val_loss, 4),
-                    "avg_train_anomaly_score": round(avg_train_anomaly_score, 4),
-                    "std_train_anomaly_score": round(std_train_anomaly_score, 4),
-                    "avg_val_anomaly_score": round(avg_val_anomaly_score, 4),
-                    "std_val_anomaly_score": round(std_val_anomaly_score, 4),
-                    "avg_test_anomaly_score": round(avg_test_anomaly_score, 4),
-                    "std_test_anomaly_score": round(std_test_anomaly_score, 4),
-                    "avg_true_anomaly_score": round(stat_true_anomaly_scores[0], 4),
-                    "std_true_anomaly_score": round(stat_true_anomaly_scores[1], 4),
-                    "accuracy": round(scores[idx][0], 4),
-                    "precision": round(scores[idx][1], 4),
-                    "recall": round(scores[idx][2], 4),
-                    "f1_score": round(scores[idx][3], 4),
-                    "roc_auc": round(scores[idx][4], 4),
-                    "threshold": round(threshold, 4),
-                    "config": config
-                },
-                ignore_index=True,
+            train_loss, val_loss, return_epoch, best_model = trainer.train(
+                train_loader=train_dataloader,
+                val_loader=valid_dataloader,
+                config=config,
+                use_wandb=False,
             )
 
-        df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
+            # test
+            total_dataset = WindowBasedDataset(total_x, total_y, config.window_size)
+            total_dataloader = DataLoader(
+                total_dataset, shuffle=False, batch_size=config.batch_size
+            )
+            best_model.to("cpu")
+            # get anomaly score of all data
+            window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
+            window_anomaly_score_result = get_total_anomaly_score(
+                total_dataloader, best_model, window_anomaly_score_result
+            )
+
+            stat_true_anomaly_scores = get_true_anomaly_info(
+                window_anomaly_score_result, total_y
+            )
+
+            train_anomaly_score = window_anomaly_score_result[
+                : len(train_x) - config.window_size + 1
+            ]
+
+            val_anomaly_score = window_anomaly_score_result[
+                : len(train_x) - config.window_size + 1
+            ]
+
+            test_anomaly_score = window_anomaly_score_result[
+                : len(train_x) - config.window_size + 1
+            ]
+
+            avg_train_anomaly_score, std_train_anomaly_score = np.mean(
+                train_anomaly_score
+            ), np.std(train_anomaly_score)
+            avg_val_anomaly_score, std_val_anomaly_score = np.mean(
+                val_anomaly_score
+            ), np.std(val_anomaly_score)
+            avg_test_anomaly_score, std_test_anomaly_score = np.mean(
+                test_anomaly_score
+            ), np.std(test_anomaly_score)
+
+            threshold_list = avg_train_anomaly_score + np.arange(0, 3.5, 0.5) * std_train_anomaly_score
+
+            scores = []
+            for threshold in threshold_list:
+                score = get_score(window_anomaly_score_result, total_y, threshold, config)
+                scores.append(score)
+
+            # save result
+            cols = [
+                "trainer_name",
+                "now",
+                "return_epoch",
+                "hidden_size",
+                "train_loss",
+                "val_loss",
+                "avg_train_anomaly_score",
+                "std_train_anomaly_score",
+                "avg_val_anomaly_score",
+                "std_val_anomaly_score",
+                "avg_test_anomaly_score",
+                "std_test_anomaly_score",
+                "avg_true_anomaly_score",
+                "std_true_anomaly_score",
+                "accuracy",
+                "precision",
+                "recall",
+                "f1_score",
+                "roc_auc",
+                "threshold",
+                "config"
+            ]
+
+            PATH = "../run_results/"
+            now = datetime.datetime.now()
+
+            file_list = os.listdir(PATH)
+            file_name = "result_" + config.data_name + ".csv"
+            if file_name not in file_list:
+                print("New file generated!")
+                df = pd.DataFrame(columns=cols)
+                df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
+
+            df = pd.read_csv(PATH + "result_" + config.data_name + ".csv")
+
+            for idx, threshold in enumerate(threshold_list):
+                df = df.append(
+                    {
+                        "trainer_name": config.trainer_name,
+                        "now": now,
+                        "return_epoch": return_epoch,
+                        "hidden_size": hidden_size,
+                        "train_loss": round(train_loss, 4),
+                        "val_loss": round(val_loss, 4),
+                        "avg_train_anomaly_score": round(avg_train_anomaly_score, 4),
+                        "std_train_anomaly_score": round(std_train_anomaly_score, 4),
+                        "avg_val_anomaly_score": round(avg_val_anomaly_score, 4),
+                        "std_val_anomaly_score": round(std_val_anomaly_score, 4),
+                        "avg_test_anomaly_score": round(avg_test_anomaly_score, 4),
+                        "std_test_anomaly_score": round(std_test_anomaly_score, 4),
+                        "avg_true_anomaly_score": round(stat_true_anomaly_scores[0], 4),
+                        "std_true_anomaly_score": round(stat_true_anomaly_scores[1], 4),
+                        "accuracy": round(scores[idx][0], 4),
+                        "precision": round(scores[idx][1], 4),
+                        "recall": round(scores[idx][2], 4),
+                        "f1_score": round(scores[idx][3], 4),
+                        "roc_auc": round(scores[idx][4], 4),
+                        "threshold": round(threshold, 4),
+                        "config": config
+                    },
+                    ignore_index=True,
+                )
+
+            df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
     # # save best model
     # from datetime import datetime
