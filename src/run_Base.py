@@ -188,6 +188,7 @@ def main(config):
                 "roc_auc",
                 "pr_auc",
                 "threshold",
+                "sampling_term",
                 "config"
             ]
 
@@ -227,6 +228,7 @@ def main(config):
                         "roc_auc": round(scores[idx][4], 4),
                         "pr_auc": round(scores[idx][5], 4),
                         "threshold": round(threshold, 4),
+                        "sampling_term": 0,
                         "config": config
                     },
                     ignore_index=True,
