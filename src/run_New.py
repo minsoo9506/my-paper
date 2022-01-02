@@ -189,6 +189,7 @@ def main(config):
                     "recall",
                     "f1_score",
                     "roc_auc",
+                    "pr_auc",
                     "threshold",
                     "config"
                 ]
@@ -227,6 +228,7 @@ def main(config):
                             "recall": round(scores[idx][2], 4),
                             "f1_score": round(scores[idx][3], 4),
                             "roc_auc": round(scores[idx][4], 4),
+                            "pr_auc": round(scores[idx][5], 4),
                             "threshold": round(threshold, 4),
                             "config": config
                         },

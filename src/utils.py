@@ -4,6 +4,8 @@ from sklearn.metrics import (
     accuracy_score,
     roc_auc_score,
     f1_score,
+    precision_recall_curve,
+    auc
 )
 import numpy as np
 import torch
@@ -26,6 +28,8 @@ def print_score(y_true: np.ndarray, y_pred: np.ndarray, anomaly_score: np.ndarra
     print(f"recall_score = {recall_score(y_true, y_pred):.3f}")
     print(f"f1_score = {f1_score(y_true, y_pred):.3f}")
     print(f"roc_auc_score = {roc_auc_score(y_true, anomaly_score):.3f}")
+    precision, recall, _ = precision_recall_curve(y_true, anomaly_score)
+    print(f"pr_auc = {auc(recall, precision):.3f}")
 
 
 def get_total_anomaly_score(total_dataloader, best_model, window_anomaly_score_result):
@@ -73,5 +77,7 @@ def get_score(window_anomaly_score_result, total_y, threshold, config):
     recall = recall_score(test_y_true, test_y_pred)
     f1 = f1_score(test_y_true, test_y_pred)
     roc_auc = roc_auc_score(test_y_true, test_anomaly_score)
+    precision, recall, _ = precision_recall_curve(test_y_true, test_anomaly_score)
+    pr_auc = auc(recall, precision)
 
-    return accuracy, precision, recall, f1, roc_auc
+    return accuracy, precision, recall, f1, roc_auc, pr_auc
