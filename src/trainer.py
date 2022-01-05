@@ -130,7 +130,7 @@ class NewTrainer:
                 total_loss += float(loss)
             return total_loss / len(val_loader)
 
-    def train(self, train_x, train_y, val_loader, sampling_term ,config, use_wandb):
+    def train(self, train_x, train_y, val_loader, sampling_term, config, use_wandb):
         lowest_train_loss = np.inf
         lowest_val_loss = np.inf
         best_model = None
