@@ -9,5 +9,5 @@ UCR_Anomaly_FullData
 UCR_TimeSeriesAnomalyDatasets2021
 
 # folder
-saved_models
+best_score
 run_results
