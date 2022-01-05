@@ -40,8 +40,8 @@ def define_argparser():
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--window_size", type=int, default=60)
     # experiment
-    p.add_argument("--n_epochs", type=int, default=200)
-    p.add_argument("--early_stop_round", type=int, default=10)
+    p.add_argument("--n_epochs", type=int, default=300)
+    p.add_argument("--early_stop_round", type=int, default=20)
     # p.add_argument("--initial_epochs", type=int, default=10)
     # p.add_argument("--sampling_term", type=list, default=[2, 4, 8])
 
@@ -98,7 +98,9 @@ def main(config):
 
     for iteration in range(config.total_iter):
         for hidden_size in config.hidden_size:
-            print(f"-----iteration {iteration} starts with hidden_size={hidden_size}-----")
+            print(
+                f"-----iteration {iteration} starts with hidden_size={hidden_size}-----"
+            )
             # model setting
             model = BaseSeq2Seq(
                 input_size=config.window_size,
@@ -110,7 +112,7 @@ def main(config):
             optimizer = optim.Adam(model.parameters())
             criterion = nn.MSELoss()
 
-            # train     
+            # train
             trainer = BaseTrainer(model=model, optimizer=optimizer, crit=criterion)
 
             train_loss, val_loss, return_epoch, best_model = trainer.train(
@@ -127,7 +129,9 @@ def main(config):
             )
             best_model.to("cpu")
             # get anomaly score of all data
-            window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
+            window_anomaly_score_result = np.zeros(
+                len(total_x) - config.window_size + 1
+            )
             window_anomaly_score_result = get_total_anomaly_score(
                 total_dataloader, best_model, window_anomaly_score_result
             )
@@ -158,11 +162,16 @@ def main(config):
                 test_anomaly_score
             ), np.std(test_anomaly_score)
 
-            threshold_list = avg_train_anomaly_score + np.arange(0, 3.5, 0.5) * std_train_anomaly_score
+            threshold_list = (
+                avg_train_anomaly_score
+                + np.arange(0, 3.5, 0.5) * std_train_anomaly_score
+            )
 
             scores = []
             for threshold in threshold_list:
-                score = get_score(window_anomaly_score_result, total_y, threshold, config)
+                score = get_score(
+                    window_anomaly_score_result, total_y, threshold, config
+                )
                 scores.append(score)
 
             # save result
@@ -189,7 +198,7 @@ def main(config):
                 "pr_auc",
                 "threshold",
                 "sampling_term",
-                "config"
+                "config",
             ]
 
             PATH = "../run_results/"
@@ -229,7 +238,7 @@ def main(config):
                         "pr_auc": round(scores[idx][5], 4),
                         "threshold": round(threshold, 4),
                         "sampling_term": 0,
-                        "config": config
+                        "config": config,
                     },
                     ignore_index=True,
                 )
