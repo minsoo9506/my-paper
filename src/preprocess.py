@@ -1,4 +1,6 @@
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+import pandas as pd
 
 PATH = "../UCR_Anomaly_FullData/"
 
@@ -99,3 +101,11 @@ def split_train_valid_test(PATH: str, data_name: str, train_ratio: float = 0.8):
     )
 
     return train_x, valid_x, test_x, train_y, valid_y, test_y
+
+from typing import Tuple
+
+def normalize_tabular(df: pd.DataFrame, label_name: str = 'label') -> Tuple[np.ndarray, pd.Series]:    
+    scaler = StandardScaler()
+    X = scaler.fit_transform(df.drop(label_name, axis=1))
+    y = df[label_name]
+    return X, y
