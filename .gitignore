@@ -4,6 +4,8 @@ __pycache__
 # data
 data
 UCR_Anomaly_FullData
+tabular_data
+time_series_data
 
 # reference material
 UCR_TimeSeriesAnomalyDatasets2021
