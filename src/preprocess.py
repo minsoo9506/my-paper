@@ -1,9 +1,7 @@
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
-
-PATH = "../UCR_Anomaly_FullData/"
-
+from sklearn.model_selection import train_test_split
 
 def normalize_data(PATH: str, data_name: str, train_end_idx: int):
     """make normalized data
@@ -102,10 +100,22 @@ def split_train_valid_test(PATH: str, data_name: str, train_ratio: float = 0.8):
 
     return train_x, valid_x, test_x, train_y, valid_y, test_y
 
-from typing import Tuple
-
-def normalize_tabular(df: pd.DataFrame, label_name: str = 'label') -> Tuple[np.ndarray, pd.Series]:    
+def normalize_tabular(df: pd.DataFrame, label_name: str = "label"):
     scaler = StandardScaler()
     X = scaler.fit_transform(df.drop(label_name, axis=1))
     y = df[label_name]
     return X, y
+
+
+def split_train_valid_test_tabular(PATH: str, data_name: str, train_ratio: float = 0.7):
+    df = pd.read_csv(PATH + data_name + '.csv')
+    X, y = normalize_tabular(df)
+    tmp = pd.DataFrame(X)
+    tmp['label'] = y
+    normal = tmp.loc[tmp['label'] == 0, :].reset_index(drop=True)
+    abnormal = tmp.loc[tmp['label'] == 1, :].reset_index(drop=True)
+    X_train, X_val_test, y_train, y_val_test = train_test_split(normal.drop('label', axis=1), normal['label'], train_size=train_ratio, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, train_size=0.5, random_state=42)
+    X_test['label'] = y_test
+    X_test = pd.concat([X_test, abnormal])
+    return X_train.values, X_val.values, X_test.drop('label', axis=1).values, y_train.values, y_val.values, X_test['label'].values
