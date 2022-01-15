@@ -1,8 +1,16 @@
 from copy import deepcopy
 import numpy as np
 import torch
+import wandb
 from torch.utils.data import DataLoader
 from dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
+from dataload.tabular import tabularDataset, WeightedtabularDataset
+
+
+def _cal_sample_weight(recon_error):
+    sample_weight = 1 - recon_error / np.sum(recon_error)
+    sample_weight = sample_weight / np.sum(sample_weight)
+    return sample_weight
 
 
 class BaseTrainer:
@@ -50,8 +58,6 @@ class BaseTrainer:
         return_epoch = 0
 
         if use_wandb:
-            import wandb
-
             wandb.login()
             wandb.init(project=config.project, config=config)
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
@@ -90,12 +96,10 @@ class NewTrainer:
         self.optimizer = optimizer
         self.crit = crit
 
-    def _train(self, train_loader, cal_train_recon_error, train_recon_error, device):
+    def _train(self, train_loader, device):
         self.model.train()
         total_loss = 0
-        idx = 0
         for input_x, _ in train_loader:
-            input_x_batch_size = input_x.shape[0]
             if device != "cpu":
                 input_x = input_x.to(device)
                 output_x = input_x.to(device)
@@ -104,17 +108,8 @@ class NewTrainer:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            # calculate train recon error
-            if cal_train_recon_error:
-                anomaly_score = abs(input_x - y_hat)
-                mean_anomaly_score = (
-                    torch.mean(anomaly_score, 1).detach().to("cpu").numpy()
-                )
-                train_recon_error[idx : idx + input_x_batch_size] = mean_anomaly_score
-                idx += input_x_batch_size
-            # prevent memory leak
             total_loss += float(loss)
-        return total_loss / len(train_loader), train_recon_error
+        return total_loss / len(train_loader)
 
     def _validate(self, val_loader, device):
         self.model.eval()
@@ -129,56 +124,84 @@ class NewTrainer:
                 # prevent memory leak
                 total_loss += float(loss)
             return total_loss / len(val_loader)
+        
+    def _inference(self, train_loader, train_recon_error, config):
+        self.model.eval()
+        idx = 0
+        with torch.no_grad():
+            for input_x, _ in train_loader:
+                input_x_batch_size = input_x.shape[0]
+                if config.device != "cpu":
+                    input_x = input_x.to(config.device)
+                y_hat = self.model(input_x)
+                # calculate train recon error
+                if config.data == "tabular":
+                    anomaly_score = abs(input_x - y_hat).detach().to("cpu").numpy()
+                    train_recon_error[idx : idx + input_x_batch_size] = anomaly_score
+                else:
+                    anomaly_score = abs(input_x - y_hat)
+                    mean_anomaly_score = (
+                        torch.mean(anomaly_score, 1).detach().to("cpu").numpy()
+                    )
+                    train_recon_error[idx : idx + input_x_batch_size] = mean_anomaly_score
+                idx += input_x_batch_size
+        return train_recon_error
 
-    def train(self, train_x, train_y, val_loader, sampling_term, config, use_wandb):
+    def train(self, train_x, train_y, train_loader, val_loader, sampling_term, config, use_wandb):
         lowest_train_loss = np.inf
         lowest_val_loss = np.inf
         best_model = None
         early_stop_round = 0
         return_epoch = 0
 
-        # 일단 처음 train loader 만들기
-        train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
-        train_loader = DataLoader(
-            train_dataset, shuffle=False, batch_size=config.batch_size
-        )
-
-        # train reconstruction error
-        data_len = len(train_x) - config.window_size + 1
+        if config.data == "tabular":
+            data_len = len(train_x)
+        else:
+            data_len = len(train_x) - config.window_size + 1
         train_recon_error = np.zeros(data_len)
 
         if use_wandb:
-            import wandb
-
             wandb.login()
             wandb.init(project=config.project, config=config)
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
 
-        for epoch_index in range(config.n_epochs + 1):
-            if (epoch_index >= config.initial_epochs) and (
+        for epoch_index in range(config.n_epochs):
+            # sampling
+            if (epoch_index >= config.initial_epochs - 1) and (
                 epoch_index % sampling_term == 0
             ):
-                train_loss, train_recon_error = self._train(
-                    train_loader, True, train_recon_error, config.device
-                )
+                train_loss = self._train(train_loader, config.device)
                 valid_loss = self._validate(val_loader, config.device)
+                
                 # calculate weight
-                sample_weight = 1 - train_recon_error / np.sum(train_recon_error)
-                sample_weight = sample_weight / np.sum(sample_weight)
-                # sampling with weight
-                train_dataset = WeightedWindowBasedDataset(
-                    train_x, train_y, config.window_size, sample_weight
+                ## make dataloader for inference
+                if config.data == "tabular":
+                    train_dataset = tabularDataset(train_x, train_y)
+                else:
+                    train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
+                train_loader_for_inference = DataLoader(
+                    train_dataset, shuffle=False, batch_size=config.batch_size
                 )
+                ## inference to get train reconstruction error
+                train_recon_error = self._inference(train_loader_for_inference, train_recon_error, config)
+                ## calculdate sample weight
+                sample_weight = _cal_sample_weight(train_recon_error)
+                
+                # sampling with weight
+                if config.data == "tabular":
+                    train_dataset = WeightedtabularDataset(
+                        train_x, train_y, sample_weight
+                    )
+                else:
+                    train_dataset = WeightedWindowBasedDataset(
+                        train_x, train_y, config.window_size, sample_weight
+                    )
                 train_loader = DataLoader(
                     train_dataset, shuffle=False, batch_size=config.batch_size
                 )
-
-            # 나중에 debugging해서 어떤 데이터들이 sample에서 빠지는지 확인 필요 #
-
+            # no sampling
             else:
-                train_loss, _ = self._train(
-                    train_loader, False, train_recon_error, config.device
-                )
+                train_loss = self._train(train_loader, config.device)
                 valid_loss = self._validate(val_loader, config.device)
 
             if use_wandb:
@@ -200,7 +223,7 @@ class NewTrainer:
             if (epoch_index + 1) % 10 == 0:
                 print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
                 print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
-            self.model.load_state_dict(best_model)
+        self.model.load_state_dict(best_model)
         return lowest_train_loss, lowest_val_loss, return_epoch, self.model
 
 
