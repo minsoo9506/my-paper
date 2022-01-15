@@ -147,7 +147,7 @@ def _save_final_result(
             "return_epoch": return_epoch,
             "early_stop_round": config.early_stop_round,
             "hidden_size": hidden_size,
-            "train_loss": round(train_loss, 4),
+            "trn_loss": round(train_loss, 4),
             "val_loss": round(val_loss, 4),
             "avg_trn_ano_scr": round(avg_trn_ano_scr, 4),
             "std_trn_ano_scr": round(std_trn_ano_scr, 4),
@@ -166,7 +166,6 @@ def _save_final_result(
         ignore_index=True,
     )
     return df
-
 
 def inference(
     config,
