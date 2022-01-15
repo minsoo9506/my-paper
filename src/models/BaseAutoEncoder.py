@@ -24,13 +24,13 @@ class BaseEncoder(nn.Module):
         super().__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(input_size, 16),
+            nn.Linear(input_size, 4 * hidden_size),
             nn.LeakyReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(16, 8),
+            nn.Linear(4 * hidden_size, 2 * hidden_size),
             nn.LeakyReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(8, hidden_size),
+            nn.Linear(2 * hidden_size, hidden_size),
         )
 
     def forward(self, x: torch.Tensor):
@@ -72,13 +72,13 @@ class BaseDecoder(nn.Module):
         super().__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(hidden_size, 8),
+            nn.Linear(hidden_size, 2 * hidden_size),
             nn.LeakyReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(8, 16),
+            nn.Linear(2 * hidden_size, 4 * hidden_size),
             nn.LeakyReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(16, output_size),
+            nn.Linear(4 * hidden_size, output_size),
         )
 
     def forward(
