@@ -40,6 +40,7 @@ def define_argparser():
 
     return config
 
+
 def main(config):
     torch.backends.cudnn.deterministic = True
     random.seed(0)
@@ -53,12 +54,11 @@ def main(config):
 
     for file_name in file_list_txt:
         PATH = "../time_series_data/"
-        config.data_name = file_name.split('.')[0]
+        config.data_name = file_name.split(".")[0]
 
         train_x, valid_x, test_x, train_y, valid_y, test_y = split_train_valid_test(
             PATH, config.data_name, config.train_ratio
         )
-
         train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
         valid_dataset = WindowBasedDataset(valid_x, valid_y, config.window_size)
 
@@ -71,7 +71,7 @@ def main(config):
 
         total_x = np.concatenate([train_x, valid_x, test_x])
         total_y = np.concatenate([train_y, valid_y, test_y])
-        IR = round( (len(total_y) - np.sum(total_y)) / np.sum(total_y), 4)
+        IR = round((len(total_y) - np.sum(total_y)) / np.sum(total_y), 4)
         # fix y label (because window_base approach)
         splited_data_name = config.data_name.split("_")
         abnormal_start_idx = int(splited_data_name[-2])
@@ -110,7 +110,7 @@ def main(config):
 
             best_model.to("cpu")
             sampling_term = 0
-            
+
             df = inference(
                 config,
                 total_dataloader,
@@ -132,9 +132,11 @@ def main(config):
 
         for hidden_size in config.hidden_size:
             for sampling_term in config.sampling_term:
-                print(f"-----NewTrainer starts with hidden_size={hidden_size}-----")
+                print(
+                    f"-----NewTrainer starts with hidden_size={hidden_size}, sampling_term={sampling_term}-----"
+                )
                 config.trainer_name = "NewTrainer"
-                
+
                 model = BaseSeq2Seq(
                     input_size=config.window_size,
                     hidden_size=hidden_size,

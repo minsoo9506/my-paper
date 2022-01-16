@@ -1,14 +1,9 @@
 import pandas as pd
 import os
 
-PATH = "../run_results/"
 COLS = [
-    ["hidden_size", "accuracy"],
     ["hidden_size", "roc_auc"],
     ["hidden_size", "pr_auc"],
-    ["hidden_size", "precision"],
-    ["hidden_size", "recall"],
-    ["hidden_size", "f1_score"],
 ]
 
 
@@ -39,6 +34,7 @@ def make_result_score_df(df, cols=COLS):
 
 
 if __name__ == "__main__":
+    PATH = "../run_results_tabular/"
     file_list = os.listdir(PATH)
     file_list_py = [file for file in file_list if file.endswith(".csv")]
     for file_name in file_list_py:

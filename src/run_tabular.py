@@ -26,7 +26,7 @@ def define_argparser():
     p.add_argument("--hidden_size", type=list, default=[2, 4, 8])
     # data
     p.add_argument("--train_ratio", type=int, default=0.7)
-    p.add_argument("--batch_size", type=int, default=64)
+    p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--window_size", type=int, default=60)
     # experiment
     p.add_argument("--n_epochs", type=int, default=100)
@@ -39,6 +39,7 @@ def define_argparser():
     config.device = device
 
     return config
+
 
 def main(config):
     torch.backends.cudnn.deterministic = True
@@ -53,11 +54,18 @@ def main(config):
 
     for file_name in file_list_csv:
         PATH = "../tabular_data/"
-        config.data_name = file_name.split('.')[0]
+        config.data_name = file_name.split(".")[0]
 
-        train_x, valid_x, test_x, train_y, valid_y, test_y = split_train_valid_test_tabular(
-            PATH, config.data_name, config.train_ratio
-        )
+        (
+            train_x,
+            valid_x,
+            test_x,
+            train_y,
+            valid_y,
+            test_y,
+        ) = split_train_valid_test_tabular(PATH, config.data_name, config.train_ratio)
+        # resize 'window_size' = 'col_len'
+        config.window_size = train_x.shape[1]
 
         train_dataset = tabularDataset(train_x, train_y)
         valid_dataset = tabularDataset(valid_x, valid_y)
@@ -71,7 +79,7 @@ def main(config):
 
         total_x = np.concatenate([train_x, valid_x, test_x])
         total_y = np.concatenate([train_y, valid_y, test_y])
-        IR = round( (len(total_y) - np.sum(total_y)) / np.sum(total_y), 4)
+        IR = round((len(total_y) - np.sum(total_y)) / np.sum(total_y), 4)
         # for inference
         total_dataset = tabularDataset(total_x, total_y)
         total_dataloader = DataLoader(
@@ -104,7 +112,7 @@ def main(config):
 
             best_model.to("cpu")
             sampling_term = 0
-            
+
             df = inference(
                 config,
                 total_dataloader,
@@ -121,14 +129,16 @@ def main(config):
                 sampling_term,
             )
 
-            PATH = "../run_results_time/"
+            PATH = "../run_results_tabular/"
             df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
         for hidden_size in config.hidden_size:
             for sampling_term in config.sampling_term:
-                print(f"-----NewTrainer starts with hidden_size={hidden_size}-----")
+                print(
+                    f"-----NewTrainer starts with hidden_size={hidden_size}, sampling_term={sampling_term}-----"
+                )
                 config.trainer_name = "NewTrainer"
-                
+
                 model = BaseSeq2Seq(
                     input_size=config.window_size,
                     hidden_size=hidden_size,
@@ -170,7 +180,7 @@ def main(config):
                     sampling_term,
                 )
 
-                PATH = "../run_results_time/"
+                PATH = "../run_results_tabular/"
                 df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
 
