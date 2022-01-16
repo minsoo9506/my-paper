@@ -14,7 +14,7 @@ class tabularDataset(Dataset):
         return self.x.shape[0]
 
     def __getitem__(self, idx: int):
-        return self.x[idx, :], self.y[idx, :]
+        return self.x[idx, :], self.y[idx]
 
 
 class WeightedtabularDataset(Dataset):
@@ -36,4 +36,4 @@ class WeightedtabularDataset(Dataset):
         return self.x.shape[0]
 
     def __getitem__(self, idx: int):
-        return self.x[idx, :], self.y[idx, :]
+        return self.x[idx, :], self.y[idx]
