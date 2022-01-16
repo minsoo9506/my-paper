@@ -7,8 +7,13 @@ from dataload.window_based import WindowBasedDataset, WeightedWindowBasedDataset
 from dataload.tabular import tabularDataset, WeightedtabularDataset
 
 
+def _softmax(recon_error):
+    exp_recon_error = np.exp(recon_error - np.max(recon_error))
+    return exp_recon_error / np.sum(exp_recon_error)
+
+
 def _cal_sample_weight(recon_error):
-    sample_weight = 1 - recon_error / np.sum(recon_error)
+    sample_weight = 1 - _softmax(recon_error)
     sample_weight = sample_weight / np.sum(sample_weight)
     return sample_weight
 
@@ -85,6 +90,7 @@ class BaseTrainer:
             if (epoch_index + 1) % 10 == 0:
                 print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
                 print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+            return_epoch = epoch_index
         self.model.load_state_dict(best_model)
         return lowest_train_loss, lowest_val_loss, return_epoch, self.model
 
@@ -124,7 +130,7 @@ class NewTrainer:
                 # prevent memory leak
                 total_loss += float(loss)
             return total_loss / len(val_loader)
-        
+
     def _inference(self, train_loader, train_recon_error, config):
         self.model.eval()
         idx = 0
@@ -135,19 +141,24 @@ class NewTrainer:
                     input_x = input_x.to(config.device)
                 y_hat = self.model(input_x)
                 # calculate train recon error
-                if config.data == "tabular":
-                    anomaly_score = abs(input_x - y_hat).detach().to("cpu").numpy()
-                    train_recon_error[idx : idx + input_x_batch_size] = anomaly_score
-                else:
-                    anomaly_score = abs(input_x - y_hat)
-                    mean_anomaly_score = (
-                        torch.mean(anomaly_score, 1).detach().to("cpu").numpy()
-                    )
-                    train_recon_error[idx : idx + input_x_batch_size] = mean_anomaly_score
+                anomaly_score = abs(input_x - y_hat)
+                mean_anomaly_score = (
+                    torch.mean(anomaly_score, 1).detach().to("cpu").numpy()
+                )
+                train_recon_error[idx : idx + input_x_batch_size] = mean_anomaly_score
                 idx += input_x_batch_size
         return train_recon_error
 
-    def train(self, train_x, train_y, train_loader, val_loader, sampling_term, config, use_wandb):
+    def train(
+        self,
+        train_x,
+        train_y,
+        train_loader,
+        val_loader,
+        sampling_term,
+        config,
+        use_wandb,
+    ):
         lowest_train_loss = np.inf
         lowest_val_loss = np.inf
         best_model = None
@@ -172,21 +183,25 @@ class NewTrainer:
             ):
                 train_loss = self._train(train_loader, config.device)
                 valid_loss = self._validate(val_loader, config.device)
-                
+
                 # calculate weight
                 ## make dataloader for inference
                 if config.data == "tabular":
                     train_dataset = tabularDataset(train_x, train_y)
                 else:
-                    train_dataset = WindowBasedDataset(train_x, train_y, config.window_size)
+                    train_dataset = WindowBasedDataset(
+                        train_x, train_y, config.window_size
+                    )
                 train_loader_for_inference = DataLoader(
                     train_dataset, shuffle=False, batch_size=config.batch_size
                 )
                 ## inference to get train reconstruction error
-                train_recon_error = self._inference(train_loader_for_inference, train_recon_error, config)
+                train_recon_error = self._inference(
+                    train_loader_for_inference, train_recon_error, config
+                )
                 ## calculdate sample weight
                 sample_weight = _cal_sample_weight(train_recon_error)
-                
+
                 # sampling with weight
                 if config.data == "tabular":
                     train_dataset = WeightedtabularDataset(
@@ -223,6 +238,7 @@ class NewTrainer:
             if (epoch_index + 1) % 10 == 0:
                 print(f"Epoch {epoch_index+1}/{config.n_epochs}:")
                 print(f"train_loss={train_loss:.3f}, valid_loss={valid_loss:.3f}")
+            return_epoch = epoch_index
         self.model.load_state_dict(best_model)
         return lowest_train_loss, lowest_val_loss, return_epoch, self.model
 
