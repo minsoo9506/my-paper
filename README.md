@@ -11,7 +11,9 @@
 - [ ] `run_tabular.py` 수정
 - [ ] New 방법이 잘되고 안되는 경우 비교해보기
   - [ ] 시뮬레이션용 데이터 만들고 실험
-- [ ] weight를 계산하는 방법 더 고민? log 씌우기 등등
+- [ ] weight를 계산하는 방법 더 고민
+  - 아니면 모든 sample의 weight를 계산하지 말고 recon_error가 큰 애들만 weight로 resampling? 제외?
+  - 모든 sample의 weight를 계산하는게 너무 heavy하다
 
 ## 실험
 - `early_stop_round`, `initial_epochs`, `hidden_size`, `sampling_term`
