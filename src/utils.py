@@ -69,11 +69,12 @@ def _get_true_anomaly_info(window_anomaly_score_result, total_y):
     return avg_true_anomaly_score, std_true_anomaly_score
 
 
-def _get_score(window_anomaly_score_result, total_y, config):
-    tst_idx = int(config.data_name.split("_")[-3]) - config.window_size + 1
-    tst_ano_scr = window_anomaly_score_result[tst_idx:]
-    tst_y_true = total_y[tst_idx : len(window_anomaly_score_result)]
-
+def _get_score(window_anomaly_score_result, total_y, tst_start_idx, config):
+    tst_ano_scr = window_anomaly_score_result[tst_start_idx:]
+    if config.data == "tabular":
+        tst_y_true = total_y[tst_start_idx:]
+    else:
+        tst_y_true = total_y[tst_start_idx : len(window_anomaly_score_result)]
     roc_auc = roc_auc_score(tst_y_true, tst_ano_scr)
     _precision, _recall, _ = precision_recall_curve(tst_y_true, tst_ano_scr)
     pr_auc = auc(_recall, _precision)
@@ -130,9 +131,11 @@ def _save_final_result(
         "config",
     ]
 
-    PATH = "../run_results_time/"
+    if config.data == "tabular":
+        PATH = "../run_results_tabular/"
+    else:
+        PATH = "../run_results_time/"
     now = datetime.datetime.now()
-
     file_list = os.listdir(PATH)
     file_name = "result_" + config.data_name + ".csv"
     if file_name not in file_list:
@@ -167,6 +170,7 @@ def _save_final_result(
     )
     return df
 
+
 def inference(
     config,
     total_dataloader,
@@ -182,7 +186,15 @@ def inference(
     IR,
     sampling_term,
 ):
-    window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
+    if config.data == "tabular":
+        window_anomaly_score_result = np.zeros(len(total_x))
+        trn_end_idx = len(train_x)
+        val_end_idx = len(train_x) + len(valid_x)
+    else:
+        window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
+        trn_end_idx = len(train_x) - config.window_size + 1
+        val_end_idx = len(train_x) + len(valid_x) - config.window_size + 1
+
     window_anomaly_score_result = _get_total_anomaly_score(
         total_dataloader, best_model, window_anomaly_score_result
     )
@@ -191,8 +203,6 @@ def inference(
         window_anomaly_score_result, total_y
     )
 
-    trn_end_idx = len(train_x) - config.window_size + 1
-    val_end_idx = len(train_x) + len(valid_x) - config.window_size + 1
     trn_ano_scr, val_ano_scr, tst_ano_scr = _get_anomaly_score_result(
         window_anomaly_score_result, trn_end_idx, val_end_idx
     )
@@ -201,7 +211,9 @@ def inference(
     avg_val_ano_scr, std_val_ano_scr = np.mean(val_ano_scr), np.std(val_ano_scr)
     avg_tst_ano_scr, std_tst_ano_scr = np.mean(tst_ano_scr), np.std(tst_ano_scr)
 
-    roc_auc, pr_auc = _get_score(window_anomaly_score_result, total_y, config)
+    roc_auc, pr_auc = _get_score(
+        window_anomaly_score_result, total_y, val_end_idx, config
+    )
 
     df = _save_final_result(
         config,
