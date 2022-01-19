@@ -10,5 +10,7 @@ time_series_data
 # reference material
 UCR_TimeSeriesAnomalyDatasets2021
 
-# folder
-best_score
+# file
+src/dataload/RnnCnnEncLoad.py
+src/dataload/seq2seq_load.py
+src/models/LSTMAutoEncoder.py
