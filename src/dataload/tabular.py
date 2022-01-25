@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import copy
 
 
 class tabularDataset(Dataset):
@@ -31,6 +32,22 @@ class WeightedtabularDataset(Dataset):
 
         self.x = self.x[sampled_idx]
         self.y = self.y[sampled_idx]
+
+    def __len__(self):
+        return self.x.shape[0]
+
+    def __getitem__(self, idx: int):
+        return self.x[idx, :], self.y[idx]
+    
+class RatiotabularDateset(Dataset):
+    def __init__(self, x: np.ndarray, y: np.ndarray, normal_idx: np.ndarray, abnormal_idx: np.ndarray):
+        super().__init__()
+
+        self.x = torch.tensor(x, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+        
+        self.x[abnormal_idx] = copy.deepcopy(self.x[normal_idx])
+        self.y[abnormal_idx] = copy.deepcopy(self.y[normal_idx])
 
     def __len__(self):
         return self.x.shape[0]
