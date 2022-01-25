@@ -107,6 +107,7 @@ def _save_final_result(
     roc_auc,
     pr_auc,
     sampling_term,
+    PATH
 ):
     cols = [
         "trainer_name",
@@ -130,11 +131,11 @@ def _save_final_result(
         "sampling_term",
         "config",
     ]
-
-    if config.data == "tabular":
-        PATH = "../run_results_tabular/"
-    else:
-        PATH = "../run_results_time/"
+    if PATH is None:
+        if config.data == "tabular":
+            PATH = "../run_results_tabular/"
+        else:
+            PATH = "../run_results_time/"
     now = datetime.datetime.now()
     file_list = os.listdir(PATH)
     file_name = "result_" + config.data_name + ".csv"
@@ -185,6 +186,7 @@ def inference(
     val_loss,
     IR,
     sampling_term,
+    PATH = None
 ):
     if config.data == "tabular":
         window_anomaly_score_result = np.zeros(len(total_x))
@@ -233,5 +235,6 @@ def inference(
         roc_auc,
         pr_auc,
         sampling_term,
+        PATH
     )
     return df
