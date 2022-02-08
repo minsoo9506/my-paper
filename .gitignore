@@ -7,6 +7,10 @@ UCR_Anomaly_FullData
 tabular_data
 time_series_data
 
+run_*
+sim_*
+errors
+
 # reference material
 UCR_TimeSeriesAnomalyDatasets2021
 
