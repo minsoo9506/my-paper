@@ -107,7 +107,7 @@ def _save_final_result(
     roc_auc,
     pr_auc,
     sampling_term,
-    PATH
+    PATH,
 ):
     cols = [
         "trainer_name",
@@ -186,7 +186,7 @@ def inference(
     val_loss,
     IR,
     sampling_term,
-    PATH = None
+    PATH=None,
 ):
     if config.data == "tabular":
         window_anomaly_score_result = np.zeros(len(total_x))
@@ -235,6 +235,6 @@ def inference(
         roc_auc,
         pr_auc,
         sampling_term,
-        PATH
+        PATH,
     )
     return df

@@ -38,14 +38,21 @@ class WeightedtabularDataset(Dataset):
 
     def __getitem__(self, idx: int):
         return self.x[idx, :], self.y[idx]
-    
+
+
 class RatiotabularDateset(Dataset):
-    def __init__(self, x: np.ndarray, y: np.ndarray, normal_idx: np.ndarray, abnormal_idx: np.ndarray):
+    def __init__(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        normal_idx: np.ndarray,
+        abnormal_idx: np.ndarray,
+    ):
         super().__init__()
 
         self.x = torch.tensor(x, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
-        
+
         self.x[abnormal_idx] = copy.deepcopy(self.x[normal_idx])
         self.y[abnormal_idx] = copy.deepcopy(self.y[normal_idx])
 
