@@ -146,8 +146,8 @@ class NewTrainer:
         train_loader,
         val_loader,
         sampling_term,
-        initial_epochs,
-        sample_ratio,
+        initial_epoch,
+        sampling_ratio,
         config,
         use_wandb,
         is_debug=False,
@@ -158,17 +158,21 @@ class NewTrainer:
         early_stop_round = 0
         return_epoch = 0
 
+        data_len = len(train_x)
+        train_recon_error = np.zeros(data_len)
+        num_sampling = int(data_len * sampling_ratio)
+
         if is_debug:
-            data_len = len(train_x)
-            train_recon_error = np.zeros(data_len)
             errors = np.zeros((data_len, config.n_epochs))
             errors_idx = 0
-
-            num_sampling = int(len(train_x) * sample_ratio)
 
             tops = np.zeros((num_sampling, config.n_epochs))
             downs = np.zeros((num_sampling, config.n_epochs))
             top_down_idx = 0
+        else:
+            errors = None
+            tops = None
+            downs = None
 
         if use_wandb:
             wandb.login()
@@ -176,8 +180,8 @@ class NewTrainer:
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
 
         for epoch_index in range(config.n_epochs):
-            if (epoch_index >= initial_epochs - 1) or (
-                (epoch_index >= initial_epochs - 1)
+            if (epoch_index >= initial_epoch - 1) or (
+                (epoch_index >= initial_epoch - 1)
                 and (epoch_index % sampling_term == 0)
             ):
                 train_loss = self._train(train_loader, config.device)
@@ -188,13 +192,14 @@ class NewTrainer:
                     train_loader, train_recon_error, config
                 )
 
+                tmp = pd.DataFrame(train_recon_error).sort_values(0, ascending=True)
+                top = tmp[:num_sampling].index
+                down = tmp[-num_sampling:].index
+
                 if is_debug:
                     errors[:, errors_idx] = train_recon_error
                     errors_idx += 1
 
-                    tmp = pd.DataFrame(train_recon_error).sort_values(0, ascending=True)
-                    top = tmp[:num_sampling].index
-                    down = tmp[-num_sampling:].index
                     tops[:, top_down_idx] = top
                     downs[:, top_down_idx] = down
                     top_down_idx += 1
