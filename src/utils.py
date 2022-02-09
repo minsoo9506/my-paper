@@ -107,6 +107,8 @@ def _save_final_result(
     roc_auc,
     pr_auc,
     sampling_term,
+    sampling_ratio,
+    initial_epoch,
     PATH,
 ):
     cols = [
@@ -129,7 +131,8 @@ def _save_final_result(
         "roc_auc",
         "pr_auc",
         "sampling_term",
-        "config",
+        "sampling_ratio",
+        "initial_epoch",
     ]
     if PATH is None:
         if config.data == "tabular":
@@ -165,7 +168,8 @@ def _save_final_result(
             "roc_auc": round(roc_auc, 4),
             "pr_auc": round(pr_auc, 4),
             "sampling_term": sampling_term,
-            "config": config,
+            "sampling_ratio": sampling_ratio,
+            "initial_epoch": initial_epoch,
         },
         ignore_index=True,
     )
@@ -186,6 +190,8 @@ def inference(
     val_loss,
     IR,
     sampling_term,
+    sampling_ratio,
+    initial_epoch,
     PATH=None,
 ):
     if config.data == "tabular":
@@ -235,6 +241,8 @@ def inference(
         roc_auc,
         pr_auc,
         sampling_term,
+        sampling_ratio,
+        initial_epoch,
         PATH,
     )
     return df
