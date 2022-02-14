@@ -180,7 +180,7 @@ class NewTrainer:
             wandb.watch(self.model, self.crit, log="gradients", log_freq=100)
 
         for epoch_index in range(config.n_epochs):
-            if (epoch_index >= initial_epoch - 1) or (
+            if (epoch_index == (initial_epoch - 1)) or (
                 (epoch_index >= initial_epoch - 1)
                 and (epoch_index % sampling_term == 0)
             ):
