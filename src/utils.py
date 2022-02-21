@@ -246,3 +246,77 @@ def inference(
         PATH,
     )
     return df
+
+
+def ensemble_inference(
+    config,
+    total_dataloader,
+    best_model,
+    train_x,
+    valid_x,
+    total_x,
+    total_y,
+    return_epoch,
+    hidden_size,
+    train_loss,
+    val_loss,
+    IR,
+    sampling_term,
+    sampling_ratio,
+    initial_epoch,
+    PATH=None,
+):
+    if config.data == "tabular":
+        window_anomaly_score_result = np.zeros(len(total_x))
+        trn_end_idx = len(train_x)
+        val_end_idx = len(train_x) + len(valid_x)
+    else:
+        window_anomaly_score_result = np.zeros(len(total_x) - config.window_size + 1)
+        trn_end_idx = len(train_x) - config.window_size + 1
+        val_end_idx = len(train_x) + len(valid_x) - config.window_size + 1
+
+    window_anomaly_score_result = _get_total_anomaly_score(
+        total_dataloader, best_model, window_anomaly_score_result
+    )
+
+    avg_true_ano_scr, std_true_ano_scr = _get_true_anomaly_info(
+        window_anomaly_score_result, total_y
+    )
+
+    trn_ano_scr, val_ano_scr, tst_ano_scr = _get_anomaly_score_result(
+        window_anomaly_score_result, trn_end_idx, val_end_idx
+    )
+
+    avg_trn_ano_scr, std_trn_ano_scr = np.mean(trn_ano_scr), np.std(trn_ano_scr)
+    avg_val_ano_scr, std_val_ano_scr = np.mean(val_ano_scr), np.std(val_ano_scr)
+    avg_tst_ano_scr, std_tst_ano_scr = np.mean(tst_ano_scr), np.std(tst_ano_scr)
+
+    roc_auc, pr_auc = _get_score(
+        window_anomaly_score_result, total_y, val_end_idx, config
+    )
+
+    test_window_anomaly_score_result = window_anomaly_score_result[val_end_idx:]
+
+    df = _save_final_result(
+        config,
+        return_epoch,
+        hidden_size,
+        train_loss,
+        val_loss,
+        avg_trn_ano_scr,
+        std_trn_ano_scr,
+        avg_val_ano_scr,
+        std_val_ano_scr,
+        avg_tst_ano_scr,
+        std_tst_ano_scr,
+        avg_true_ano_scr,
+        std_true_ano_scr,
+        IR,
+        roc_auc,
+        pr_auc,
+        sampling_term,
+        sampling_ratio,
+        initial_epoch,
+        PATH,
+    )
+    return df, test_window_anomaly_score_result
