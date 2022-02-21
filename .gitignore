@@ -7,7 +7,7 @@ UCR_Anomaly_FullData
 tabular_data*
 time_series_data*
 
-run_*
+run_result*
 sim_*
 errors
 wandb
