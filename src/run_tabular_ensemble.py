@@ -37,7 +37,7 @@ def define_argparser():
     p.add_argument("--initial_epochs", type=list, default=[5, 20])
     p.add_argument("--sampling_term", type=list, default=[1, 5])
     p.add_argument("--sampling_ratio", type=list, default=[0.01, 0.1])
-    
+
     config = p.parse_args()
     device = "cpu" if config.gpu_id < 0 else "cuda:" + str(config.gpu_id)
     config.device = device
@@ -118,7 +118,7 @@ def main(config):
             sampling_term = 0
             sampling_ratio = 0
             initial_epoch = 0
-            PATH = "../run_results_tabular/"
+            PATH = "../run_result_tabular/"
             df = inference(
                 config,
                 total_dataloader,
@@ -135,18 +135,16 @@ def main(config):
                 sampling_term,
                 sampling_ratio,
                 initial_epoch,
-                PATH
+                PATH,
             )
 
             df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
         for hidden_size in config.hidden_size:
             for sampling_ratio in config.sampling_ratio:
-                for initial_epoch in config.initial_epochs: 
+                for initial_epoch in config.initial_epochs:
                     for sampling_term in config.sampling_term:
-                        print(
-                            f"-----NewTrainer -----"
-                        )
+                        print(f"-----NewTrainer -----")
                         config.trainer_name = "NewTrainer"
 
                         model = BaseSeq2Seq(
@@ -160,9 +158,19 @@ def main(config):
                         criterion = nn.MSELoss()
 
                         # train
-                        trainer = NewTrainer(model=model, optimizer=optimizer, crit=criterion)
+                        trainer = NewTrainer(
+                            model=model, optimizer=optimizer, crit=criterion
+                        )
 
-                        train_loss, val_loss, return_epoch, best_model, _, _, _ = trainer.train(
+                        (
+                            train_loss,
+                            val_loss,
+                            return_epoch,
+                            best_model,
+                            _,
+                            _,
+                            _,
+                        ) = trainer.train(
                             train_x=train_x,
                             train_y=train_y,
                             train_loader=train_dataloader,
@@ -172,11 +180,11 @@ def main(config):
                             sampling_ratio=sampling_ratio,
                             config=config,
                             use_wandb=False,
-                            is_debug=is_debug
+                            is_debug=is_debug,
                         )
 
                         best_model.to("cpu")
-                        PATH = "../run_results_tabular/"
+                        PATH = "../run_result_tabular/"
                         df, tst_ano_score = ensemble_inference(
                             config,
                             total_dataloader,
@@ -193,14 +201,31 @@ def main(config):
                             sampling_term,
                             sampling_ratio,
                             initial_epoch,
-                            PATH
+                            PATH,
                         )
-                        df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
-            
-                        hp = '_hs' + str(hidden_size) + '_st' + str(sampling_term) + '_sr' + str(sampling_ratio) + '_ie' + str(initial_epoch)
-                        with open('./ensemble_tab;ular_1/' + config.data_name + hp + '.pickle', 'wb') as f:
+                        df.to_csv(
+                            PATH + "result_" + config.data_name + ".csv", index=False
+                        )
+
+                        hp = (
+                            "_hs"
+                            + str(hidden_size)
+                            + "_st"
+                            + str(sampling_term)
+                            + "_sr"
+                            + str(sampling_ratio)
+                            + "_ie"
+                            + str(initial_epoch)
+                        )
+                        with open(
+                            "../ensemble_tabular_1/"
+                            + config.data_name
+                            + hp
+                            + ".pickle",
+                            "wb",
+                        ) as f:
                             pickle.dump(tst_ano_score, f, pickle.HIGHEST_PROTOCOL)
-                        
+
                         torch.cuda.empty_cache()
 
 

@@ -4,7 +4,7 @@ from models.BaseAutoEncoder import BaseSeq2Seq
 from preprocess import split_train_valid_test
 from dataload.window_based import WindowBasedDataset
 from utils import inference, ensemble_inference
-from trainer import NewTrainer, BaseTrainer
+from simulation_trainer import NewTrainer, BaseTrainer
 
 import pickle
 import winsound
@@ -26,7 +26,7 @@ def define_argparser():
     p.add_argument("--trainer_name", type=str, default="BaseTrainer")
     p.add_argument("--gpu_id", type=int, default=0 if torch.cuda.is_available() else -1)
     # model
-    p.add_argument("--hidden_size", type=list, default=[2, 4])
+    p.add_argument("--hidden_size", type=list, default=[2])
     # data
     p.add_argument("--train_ratio", type=int, default=0.7)
     p.add_argument("--batch_size", type=int, default=256)
@@ -116,7 +116,7 @@ def main(config):
             sampling_term = 0
             sampling_ratio = 0
             initial_epoch = 0
-            PATH = "../run_results_time/"
+            PATH = "../run_result_time/"
             df = inference(
                 config,
                 total_dataloader,
@@ -133,19 +133,17 @@ def main(config):
                 sampling_term,
                 sampling_ratio,
                 initial_epoch,
-                PATH
+                PATH,
             )
 
             df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
             torch.cuda.empty_cache()
-            
+
         for hidden_size in config.hidden_size:
             for sampling_ratio in config.sampling_ratio:
-                for initial_epoch in config.initial_epochs: 
+                for initial_epoch in config.initial_epochs:
                     for sampling_term in config.sampling_term:
-                        print(
-                            f"-----NewTrainer starts-----"
-                        )
+                        print(f"-----NewTrainer starts-----")
                         config.trainer_name = "NewTrainer"
 
                         model = BaseSeq2Seq(
@@ -159,9 +157,19 @@ def main(config):
                         criterion = nn.MSELoss()
 
                         # train
-                        trainer = NewTrainer(model=model, optimizer=optimizer, crit=criterion)
+                        trainer = NewTrainer(
+                            model=model, optimizer=optimizer, crit=criterion
+                        )
 
-                        train_loss, val_loss, return_epoch, best_model, _, _, _ = trainer.train(
+                        (
+                            train_loss,
+                            val_loss,
+                            return_epoch,
+                            best_model,
+                            _,
+                            _,
+                            _,
+                        ) = trainer.train(
                             train_x=train_x,
                             train_y=train_y,
                             train_loader=train_dataloader,
@@ -171,11 +179,11 @@ def main(config):
                             sampling_ratio=sampling_ratio,
                             config=config,
                             use_wandb=False,
-                            is_debug=is_debug
+                            is_debug=is_debug,
                         )
 
                         best_model.to("cpu")
-                        PATH = "../run_results_time/"
+                        PATH = "../run_result_time/"
                         df, tst_ano_score = ensemble_inference(
                             config,
                             total_dataloader,
@@ -192,17 +200,32 @@ def main(config):
                             sampling_term,
                             sampling_ratio,
                             initial_epoch,
-                            PATH
+                            PATH,
                         )
-                        
-                        df.to_csv(PATH + "result_" + config.data_name + ".csv", index=False)
 
-                        hp = '_hs' + str(hidden_size) + '_st' + str(sampling_term) + '_sr' + str(sampling_ratio) + '_ie' + str(initial_epoch)
-                        with open('./ensemble_time_1/' + config.data_name + hp + '.pickle', 'wb') as f:
+                        df.to_csv(
+                            PATH + "result_" + config.data_name + ".csv", index=False
+                        )
+
+                        hp = (
+                            "_hs"
+                            + str(hidden_size)
+                            + "_st"
+                            + str(sampling_term)
+                            + "_sr"
+                            + str(sampling_ratio)
+                            + "_ie"
+                            + str(initial_epoch)
+                        )
+                        with open(
+                            "../ensemble_time_2/" + config.data_name + hp + ".pickle",
+                            "wb",
+                        ) as f:
                             pickle.dump(tst_ano_score, f, pickle.HIGHEST_PROTOCOL)
-                        
+
                         torch.cuda.empty_cache()
-                        
+
+
 if __name__ == "__main__":
     config = define_argparser()
     main(config)
