@@ -136,9 +136,9 @@ def _save_final_result(
     ]
     if PATH is None:
         if config.data == "tabular":
-            PATH = "../run_results_tabular/"
+            PATH = "../run_result_tabular/"
         else:
-            PATH = "../run_results_time/"
+            PATH = "../run_result_time/"
     now = datetime.datetime.now()
     file_list = os.listdir(PATH)
     file_name = "result_" + config.data_name + ".csv"
