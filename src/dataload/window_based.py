@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import copy
 
 
 class WindowBasedDataset(Dataset):
@@ -103,3 +104,35 @@ class WeightedWindowBasedDataset(Dataset):
         self.y[idx, :] : torch.tensor
         """
         return self.x[idx, :], self.y[idx, :]
+
+
+class RatioWindowDateset(Dataset):
+    def __init__(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        normal_idx: np.ndarray,
+        abnormal_idx: np.ndarray,
+        window: int,
+    ):
+        super().__init__()
+
+        data_len = len(x) - window + 1
+        self.x = np.zeros((data_len, window))
+        self.y = np.zeros((data_len, window))
+
+        for idx in range(data_len):
+            self.x[idx, :] = x[idx : idx + window]
+            self.y[idx, :] = y[idx : idx + window]
+
+        self.x[abnormal_idx] = copy.deepcopy(self.x[normal_idx])
+        self.y[abnormal_idx] = copy.deepcopy(self.y[normal_idx])
+
+        self.x = torch.tensor(self.x, dtype=torch.float32)
+        self.y = torch.tensor(self.y, dtype=torch.float32)
+
+    def __len__(self):
+        return self.x.shape[0]
+
+    def __getitem__(self, idx: int):
+        return self.x[idx, :], self.y[idx]
