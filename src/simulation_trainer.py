@@ -5,7 +5,8 @@ import torch
 
 # import wandb
 from torch.utils.data import DataLoader
-from src.dataload.tabular import RatiotabularDateset
+from dataload.tabular import RatiotabularDateset
+from dataload.window_based import RatioWindowDateset
 
 
 class BaseTrainer:
@@ -159,7 +160,10 @@ class NewTrainer:
         early_stop_round = 0
         return_epoch = 0
 
-        data_len = len(train_x)
+        if config.data == "time":
+            data_len = len(train_x) - config.window_size + 1
+        else:
+            data_len = len(train_x)
         train_recon_error = np.zeros(data_len)
         num_sampling = int(data_len * sampling_ratio)
 
@@ -205,7 +209,12 @@ class NewTrainer:
                     downs[:, top_down_idx] = down
                     top_down_idx += 1
 
-                train_dataset = RatiotabularDateset(train_x, train_y, top, down)
+                if config.data == "time":
+                    train_dataset = RatioWindowDateset(
+                        train_x, train_y, top, down, config.window_size
+                    )
+                else:
+                    train_dataset = RatiotabularDateset(train_x, train_y, top, down)
                 train_loader = DataLoader(
                     train_dataset, shuffle=False, batch_size=config.batch_size
                 )
