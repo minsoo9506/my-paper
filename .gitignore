@@ -20,3 +20,8 @@ UCR_TimeSeriesAnomalyDatasets2021
 src/dataload/RnnCnnEncLoad.py
 src/dataload/seq2seq_load.py
 src/models/LSTMAutoEncoder.py
+
+0409_ensemble_sim_1
+0409_run_result_sim
+0410_ensemble_sim_1
+0410_run_result_tabular
