@@ -48,7 +48,7 @@ class BaseDecoder(nn.Module):
         return x
 
 
-class BaseSeq2Seq(nn.Module):
+class VizAE(nn.Module):
     def __init__(
         self,
         input_size: int = 3,

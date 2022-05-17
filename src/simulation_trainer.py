@@ -5,8 +5,8 @@ import torch
 
 # import wandb
 from torch.utils.data import DataLoader
-from dataload.tabular import RatiotabularDateset
-from dataload.window_based import RatioWindowDateset
+from src.dataload.tabular import RatiotabularDateset
+from src.dataload.window_based import RatioWindowDateset
 
 
 class BaseTrainer:
